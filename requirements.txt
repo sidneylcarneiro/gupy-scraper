@@ -15,3 +15,10 @@ playwright==1.62.*
 
 # Motor de IA (DeepSeek, nativamente compatível com o SDK da OpenAI) - Fase 4
 openai==3.*
+
+# Painel web (FastAPI + HTMX) - Fase 5
+fastapi==0.115.*
+uvicorn==0.32.*
+jinja2==3.1.*
+python-multipart==0.0.*
+httpx==0.27.*  # TestClient nos testes das rotas

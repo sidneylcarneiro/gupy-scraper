@@ -1,0 +1,31 @@
+{% if mensagem %}
+    <div class="mensagem {% if mensagem.startswith('Erro') %}erro{% endif %}">{{ mensagem }}</div>
+{% endif %}
+
+{% if buscas %}
+    <table>
+        <thead>
+            <tr><th>Apelido</th><th>URL</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+            {% for busca in buscas %}
+            <tr>
+                <td><strong>{{ busca.apelido }}</strong></td>
+                <td class="url">{{ busca.url }}</td>
+                <td class="acoes">
+                    <form hx-post="/buscas/{{ busca.id }}/executar" hx-target="#lista-buscas" hx-swap="innerHTML">
+                        <button type="submit" title="Executar extração desta busca">▶ Executar</button>
+                        <span class="htmx-indicator">Extraindo vagas (pode levar alguns minutos)...</span>
+                    </form>
+                    <form hx-delete="/buscas/{{ busca.id }}" hx-target="#lista-buscas" hx-swap="innerHTML"
+                          hx-confirm="Remover a busca '{{ busca.apelido }}'?">
+                        <button type="submit" class="perigo">Remover</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p class="sub">Nenhuma busca cadastrada ainda. Use o formulário acima para salvar a primeira.</p>
+{% endif %}

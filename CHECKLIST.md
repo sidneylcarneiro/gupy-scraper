@@ -85,10 +85,16 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 
 > - **URL de Busca Dinâmica (feature arquitetural):** o contrato `IExtratorDeVagas.extrair_vagas(url_busca)` agora recebe a URL de busca como parâmetro; `GupyScraper` perdeu a constante fixa `URL_BUSCA` (navega para a URL recebida); `OrquestradorScraper.executar(url_busca)` repassa o parâmetro; `scripts/main.py` e `scripts/test_scraper.py` pedem a URL ao usuário via `input()`. A ferramenta aceita **qualquer URL de busca da Gupy** (cargo, filtros e modalidade definidos pelo usuário). Testes atualizados com `URL_BUSCA_FALSA` e nova verificação de propagação da URL ao scraper. Suíte: **36 passed**.
 
-## ⚪ Fase 5: Interface (FastAPI e HTMX)
+## 🟡 Fase 5: Interface (FastAPI e HTMX) (Em andamento)
 
-- [ ] Criar rotas FastAPI (Presentation layer).
-- [ ] Desenvolver templates e dashboard Kanban (Jinja2 + HTMX).
+- [~] Criar rotas FastAPI (Presentation layer). *(Concluído: painel em `presentation/app.py` com `GET /`, `POST /buscas`, `DELETE /buscas/{id}` e `POST /buscas/{id}/executar`, injeção de dependência via `Depends` para testes.)*
+- [ ] Desenvolver templates e dashboard Kanban (Jinja2 + HTMX). *(Primeiro entregue: formulário de cadastro de buscas com apelido + lista HTMX com ações Executar/Remover. Kanban de vagas pendente.)*
+
+> **Nota da Fase 5 (progresso — URL dinâmica no painel):**
+> - **Sem `input()` nem construtor de URL**: o usuário cadastra a busca no **painel web** informando a URL desejada e um **apelido**, persistida na nova tabela **`buscas`** para reuso e múltiplas buscas futuras.
+> - Domínio: entidade `Busca(apelido, url, id)` + port `IBuscaRepository` (ABC). Infra: `BuscaModel` (apelido `unique`) + `PostgresBuscaRepository` (com `ApelidoJaExisteError`). Application: `CadastrarBuscaUseCase` (valida apelido obrigatório e URL `https://portal.gupy.io/`; normaliza espaços).
+> - Presentation: FastAPI + Jinja2 + HTMX (CDN) em `presentation/app.py` + `presentation/templates/` (index + partial `lista_buscas.html`), com mensagens de sucesso/erro e confirm para remoção. `scripts/main.py` virou CLI por argumento (sem `input`).
+> - TDD: 4 testes do use case (fakes), 3 de integração do repo (banco `gupy_scraper_test`) e 4 das rotas (TestClient + override de dependência). Suíte: **47 passed**. Smoke test real: servidor uvicorn na porta 8010 — cadastro via `POST /buscas` persistiu no PostgreSQL, URL inválida rejeitada e lista atualizada.
 
 ## ⚪ Fase 6: CI/CD e Finalização
 

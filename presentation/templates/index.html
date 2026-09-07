@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gupy Scraper — Painel de Buscas</title>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f4f6f8; color: #1f2937; padding: 2rem; }
+        .card { background: #fff; border-radius: 10px; padding: 1.5rem; max-width: 780px; margin: 0 auto 1.5rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+        h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+        h2 { font-size: 1.05rem; margin-bottom: .75rem; color: #374151; }
+        .sub { color: #6b7280; font-size: .9rem; margin-bottom: 1rem; }
+        label { display: block; font-size: .85rem; font-weight: 600; margin: .6rem 0 .25rem; }
+        input { width: 100%; padding: .55rem .7rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: .95rem; }
+        button { margin-top: .9rem; background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: .55rem 1.1rem; font-size: .95rem; cursor: pointer; }
+        button.secundario { background: #6b7280; }
+        button.perigo { background: #dc2626; padding: .3rem .7rem; font-size: .8rem; margin: 0; }
+        table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+        th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid #e5e7eb; }
+        th { color: #6b7280; font-size: .78rem; text-transform: uppercase; }
+        td.url { color: #2563eb; word-break: break-all; }
+        .mensagem { padding: .6rem .9rem; border-radius: 6px; background: #ecfdf5; color: #065f46; margin-bottom: .8rem; font-size: .9rem; }
+        .mensagem.erro { background: #fef2f2; color: #991b1b; }
+        .acoes { display: flex; gap: .4rem; }
+        .htmx-indicator { display: none; color: #6b7280; font-size: .85rem; margin-top: .5rem; }
+        .htmx-request .htmx-indicator { display: inline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🎯 Gupy Scraper — Painel de Buscas</h1>
+        <p class="sub">Cadastre as URLs de busca da Gupy com um apelido, gerencie a lista e dispare a extração quando quiser.</p>
+
+        <h2>Nova busca</h2>
+        <form hx-post="/buscas" hx-target="#lista-buscas" hx-swap="innerHTML">
+            <label for="apelido">Apelido da busca</label>
+            <input id="apelido" name="apelido" placeholder="Ex.: Python Remoto" required>
+            <label for="url">URL de busca da Gupy</label>
+            <input id="url" name="url" placeholder="Cole aqui a URL de portal.gupy.io com os filtros desejados" required>
+            <button type="submit">Cadastrar busca</button>
+            <span class="htmx-indicator">Cadastrando...</span>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>Buscas salvas</h2>
+        <div id="lista-buscas">
+            {% include "partials/lista_buscas.html" %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,11 +1,13 @@
-"""Ponto de entrada do Gupy Scraper (Composition Root).
+"""Ponto de entrada CLI do Gupy Scraper (Composition Root).
 
-Monta as dependencias reais (PostgreSQL, repositorio, caso de uso, scraper e
-orquestrador) e executa o fluxo completo: extracao profunda + persistencia.
+Executa o fluxo completo de uma URL de busca informada por argumento:
+    PYTHONPATH=. ./venv/bin/python scripts/main.py "<url_busca_da_gupy>"
 
-Uso, a partir da raiz do projeto:
-    PYTHONPATH=. ./venv/bin/python scripts/main.py
+Preferencialmente use o painel web (python -m presentation.app), onde as
+buscas sao cadastradas com apelido e executadas por clique.
 """
+
+import sys
 
 from application.services.orquestrador_scraper import OrquestradorScraper
 from application.use_cases.salvar_vaga import SalvarVagaUseCase
@@ -17,6 +19,13 @@ from infrastructure.scraper.gupy_scraper import GupyScraper
 
 def main() -> None:
     """Executa o pipeline completo de extracao e persistencia de vagas."""
+    if len(sys.argv) < 2:
+        print("Informe a URL de busca da Gupy como argumento.")
+        print('Exemplo: PYTHONPATH=. ./venv/bin/python scripts/main.py "https://portal.gupy.io/job-search/term=python"')
+        print("Dica: use o painel web (python -m presentation.app) para cadastrar buscas com apelido.")
+        return
+
+    url_busca = sys.argv[1].strip()
     Base.metadata.create_all(bind=engine)
 
     repositorio = PostgresVagaRepository(SessionLocal)
@@ -27,7 +36,6 @@ def main() -> None:
         salvar_vaga_use_case=salvar_vaga_use_case,
     )
 
-    url_busca = input("Cole a URL da busca da Gupy: ").strip()
     vagas = orquestrador.executar(url_busca)
 
     print(f"\n=== {len(vagas)} vagas salvas no PostgreSQL ===\n")

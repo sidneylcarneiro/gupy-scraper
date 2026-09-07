@@ -27,3 +27,14 @@ class VagaModel(Base):
     status: Mapped[str] = mapped_column(
         Enum(StatusVaga, name="status_vaga_enum", native_enum=False), nullable=False, default=StatusVaga.ATIVA.value
     )
+
+
+class BuscaModel(Base):
+    """Mapeamento da entidade de dominio Busca para a tabela 'buscas'."""
+
+    __tablename__ = "buscas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    apelido: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    url: Mapped[str] = mapped_column(String(512), nullable=False)
+    criada_em: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now)
