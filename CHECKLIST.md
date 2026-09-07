@@ -21,11 +21,16 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - PostgreSQL validado com sucesso: container `gupy_scraper_postgres` **healthy** em `0.0.0.0:5434→5432` (porta ajustada de 5432 para 5434 devido a colisão com PostgreSQL local do host e outro container `agendamento_db`).
 > - `pytest` configurado e testado com sucesso (1 teste de smoke aprovado).
 
-## ⚪ Fase 2: Domínio e Casos de Uso (DDD & TDD)
+## ✅ Fase 2: Domínio e Casos de Uso (DDD & TDD) (Concluída)
 
-- [ ] Definir Entidades de Domínio (ex: `Vaga`, `Candidatura`).
-- [ ] Criar interfaces (Ports) para os repositórios.
-- [ ] Escrever os primeiros testes (TDD) para os Casos de Uso (ex: `SalvarVagaUseCase`).
+- [X] Definir Entidades de Domínio (ex: `Vaga`, `Candidatura`).
+- [X] Criar interfaces (Ports) para os repositórios.
+- [X] Escrever os primeiros testes (TDD) para os Casos de Uso (ex: `SalvarVagaUseCase`).
+
+> **Nota da Fase 2:**
+> - Entidade `Vaga` criada em `domain/entities/vaga.py` (dataclass pura, sem dependência de framework) com os campos `titulo`, `empresa`, `localizacao`, `formato`, `descricao`, `url`, `id`, `data_publicacao`, `status`, além dos enums `FormatoTrabalho` e `StatusVaga` e a propriedade `slug`.
+> - Port `IVagaRepository` (ABC) criado em `domain/repositories/vaga_repository.py` com os métodos `salvar(vaga)` e `buscar_por_url(url)` — apenas contrato, sem infraestrutura.
+> - TDD aplicado na ordem correta: teste criado primeiro em `tests/unit/test_salvar_vaga_use_case.py` com repositório Mock em memória (estado RED confirmado com `ModuleNotFoundError`), depois implementação mínima de `SalvarVagaUseCase` em `application/use_cases/salvar_vaga.py` (estado GREEN: 2 passed).
 
 ## ⚪ Fase 3: Infraestrutura (Scraping e Banco de Dados)
 
