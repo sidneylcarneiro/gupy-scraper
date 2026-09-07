@@ -157,3 +157,78 @@ def test_deve_retornar_dict_vazio_sem_chamar_llm_para_entradas_vazias():
         assert analisador.analisar_perfil(vaga_keywords=["Python"], perfil_candidato="   ") == {}
 
     cliente.chat.completions.create.assert_not_called()
+
+
+def test_deve_gerar_perguntas_de_entrevista_via_llm():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm(
+            '["P1?", "P2?", "P3?", "P4?", "P5?"]'
+        )
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.gerar_perguntas_entrevista(
+            titulo_vaga="Dev Python", habilidades_faltantes=["AWS", "React"]
+        )
+
+    assert resultado == ["P1?", "P2?", "P3?", "P4?", "P5?"]
+
+    kwargs = cliente.chat.completions.create.call_args.kwargs
+    conteudo = kwargs["messages"][0]["content"]
+    assert kwargs["model"] == "deepseek-chat"
+    assert kwargs["temperature"] == 0.1
+    assert "Dev Python" in conteudo
+    assert "AWS" in conteudo
+
+
+def test_deve_limpar_bloco_markdown_json_das_perguntas():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm(
+            '```json\n["P1?", "P2?"]\n```'
+        )
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.gerar_perguntas_entrevista(
+            titulo_vaga="Dev Python", habilidades_faltantes=["AWS"]
+        )
+
+    assert resultado == ["P1?", "P2?"]
+
+
+def test_deve_retornar_lista_vazia_quando_geracao_de_perguntas_falha():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.side_effect = RuntimeError("API fora do ar")
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.gerar_perguntas_entrevista(
+            titulo_vaga="Dev Python", habilidades_faltantes=["AWS"]
+        )
+
+    assert resultado == []
+
+
+def test_deve_retornar_lista_vazia_quando_resposta_nao_e_array():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm('{"pergunta": "P1?"}')
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.gerar_perguntas_entrevista(
+            titulo_vaga="Dev Python", habilidades_faltantes=["AWS"]
+        )
+
+    assert resultado == []
+
+
+def test_deve_retornar_vazio_sem_chamar_llm_para_entradas_vazias_de_interview():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+
+        assert analisador.gerar_perguntas_entrevista(titulo_vaga="", habilidades_faltantes=["AWS"]) == []
+        assert analisador.gerar_perguntas_entrevista(titulo_vaga="Dev", habilidades_faltantes=[]) == []
+
+    cliente.chat.completions.create.assert_not_called()

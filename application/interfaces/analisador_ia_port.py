@@ -21,3 +21,7 @@ class IAnalisadorIA(Protocol):
         Retorna dict com as chaves 'aderentes' e 'faltantes'.
         """
         ...
+
+    def gerar_perguntas_entrevista(self, titulo_vaga: str, habilidades_faltantes: list[str]) -> list[str]:
+        """Gera perguntas de mock interview focadas nas habilidades faltantes."""
+        ...

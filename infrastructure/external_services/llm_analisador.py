@@ -107,3 +107,41 @@ class LLMAnalisador:
         except Exception as erro:
             print(f"Erro ao analisar perfil com LLM: {erro}")
             return {}
+
+    def gerar_perguntas_entrevista(self, titulo_vaga: str, habilidades_faltantes: list[str]) -> list[str]:
+        """Gera 5 perguntas de mock interview sobre as habilidades faltantes.
+
+        Retorna lista vazia quando as entradas sao vazias ou quando a chamada
+        ao LLM falha, para nao quebrar o fluxo do caso de uso.
+        """
+        if not titulo_vaga.strip() or not habilidades_faltantes:
+            return []
+
+        prompt = (
+            "Gere 5 perguntas de entrevista (tecnicas e comportamentais) para "
+            "avaliar ou contornar as habilidades faltantes do candidato no cargo.\n"
+            'Responda SOMENTE um array JSON de strings. Sem texto extra.\n'
+            f"Cargo: {titulo_vaga}\n"
+            f"Habilidades faltantes: {habilidades_faltantes}"
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.modelo,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+
+            resposta_texto = response.choices[0].message.content.strip()
+
+            # Limpeza caso a IA insira blocos de codigo markdown
+            if resposta_texto.startswith("```json"):
+                resposta_texto = resposta_texto[7:-3].strip()
+            elif resposta_texto.startswith("```"):
+                resposta_texto = resposta_texto[3:-3].strip()
+
+            perguntas = json.loads(resposta_texto)
+            return perguntas if isinstance(perguntas, list) else []
+        except Exception as erro:
+            print(f"Erro ao gerar perguntas de entrevista com LLM: {erro}")
+            return []

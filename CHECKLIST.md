@@ -66,10 +66,10 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - **Execução real:** `scripts/main.py` rodou de ponta a ponta (listagem → detalhe por vaga → upsert). Log do console listou as 12 vagas com trecho da descrição; consulta direta no PostgreSQL (`SELECT id, empresa, titulo, LENGTH(descricao) FROM vagas`) confirmou 12 linhas com descrições entre 2.275 e 7.514 caracteres.
 > - Suíte final: **11 passed** (7 unitários + 4 integração).
 
-## 🟡 Fase 4: Inteligência Artificial (Em andamento)
+## ✅ Fase 4: Inteligência Artificial (Concluída)
 
 - [~] Integrar APIs de IA na camada de infraestrutura. *(Concluído: adaptador real `LLMAnalisador` com DeepSeek (SDK OpenAI, `base_url=https://api.deepseek.com`), validado contra a API com a `LLM_API_KEY`.)*
-- [~] Desenvolver os casos de uso de análise de perfil e mock interview. *(Entregues: `AnalisarAderenciaUseCase` (extração de palavras-chave) e `AnalisarPerfilCandidatoUseCase` (match aderentes/faltantes). Mock interview pendente.)*
+- [~] Desenvolver os casos de uso de análise de perfil e mock interview. *(Concluído: `AnalisarAderenciaUseCase`, `AnalisarPerfilCandidatoUseCase` (match E2E real executado) e `GerarMockInterviewUseCase` (5 perguntas reais geradas via DeepSeek).)*
 
 > **Nota da Fase 4 (progresso):**
 > - Port `IAnalisadorIA` (Protocol `@runtime_checkable`) em `application/interfaces/analisador_ia_port.py` com `extrair_palavras_chave(descricao_vaga: str) -> list[str]`.
@@ -81,6 +81,7 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - **Match de perfil (item 2, otimização de custos):** port `IAnalisadorIA` ganhou `analisar_perfil(vaga_keywords, perfil_candidato) -> dict`; `LLMAnalisador.analisar_perfil` usa **prompt sistêmico mínimo** (4 linhas) exigindo JSON puro `{"aderentes": [...], "faltantes": [...]}`, `temperature=0.1`, normalização do parse (chaves ausentes → `[]`), `try/except` → `{}` e guarda-clause `{}` sem chamar a API para entradas vazias (zero tokens). Caso de uso `AnalisarPerfilCandidatoUseCase` (application/use_cases) delega ao port. TDD: 3 testes do use case com `AnalisadorFake` + 4 testes novos do adaptador com patch da OpenAI — **custo zero de tokens**. Suíte: **28 passed**.
 > - **Entidade `PerfilCandidato`** (domain/entities/perfil.py): dataclass com `nome` e `resumo_experiencia`.
 > - **Match E2E real executado** (`scripts/test_match_perfil.py`): vaga do Grupo Boticário (37 keywords) x perfil Sidney → **14 aderentes** (Python, Backend, LLMs, GenAI, CI/CD...) e **23 faltantes** (React, AWS, Django, testes...). Pipeline completo: PostgreSQL → extração de keywords → match via DeepSeek.
+> - **Mock Interview (fechamento da Fase 4):** port `IAnalisadorIA` ganhou `gerar_perguntas_entrevista(titulo_vaga, habilidades_faltantes) -> list[str]`; `LLMAnalisador` usa prompt mínimo (5 linhas) exigindo array JSON puro, com limpeza de markdown, validação `isinstance(list)`, `try/except` → `[]` e guarda-clause sem chamar a API para entradas vazias. `GerarMockInterviewUseCase` (application/use_cases) delega ao port. TDD: 3 testes do use case (fakes) + 5 testes do adaptador (patch OpenAI, incl. markdown e resposta não-array) — custo zero. Execução real (`scripts/test_mock_interview.py`): 5 perguntas técnicas/comportamentais geradas sobre React, AWS, Testes e Scrum. **Nota:** scripts standalone precisam de `load_dotenv()` explícito (não importam `database`). Suíte final: **36 passed**.
 
 ## ⚪ Fase 5: Interface (FastAPI e HTMX)
 
