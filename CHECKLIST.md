@@ -8,13 +8,18 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 - [X] Atualização do `README.md` com arquitetura e nova stack (PostgreSQL, Docker, DDD, TDD).
 - [X] Criação deste `CHECKLIST.md`.
 
-## 🟡 Fase 1: Configuração Base (Passo Atual)
+## ✅ Fase 1: Configuração Base (Concluída)
 
-- [ ] Inicializar repositório Git.  [github.com/sidneylcarneiro/gupy-scraper](https://github.com/sidneylcarneiro/gupy-scraper) Sincronize com o repositório remoto
-- [ ] Criar estrutura de pastas (Clean Architecture: `domain`, `application`, `infrastructure`, `presentation`).
-- [ ] Configurar o `docker-compose.yml` para rodar o PostgreSQL.
-- [ ] Configurar ambiente virtual Python (ex: `venv`) e arquivos de dependências iniciais (`requirements.txt`).
-- [ ] Configurar framework de testes (`pytest`).
+- [X] Inicializar repositório Git.  [github.com/sidneylcarneiro/gupy-scraper](https://github.com/sidneylcarneiro/gupy-scraper) Sincronize com o repositório remoto
+- [X] Criar estrutura de pastas (Clean Architecture: `domain`, `application`, `infrastructure`, `presentation`).
+- [X] Configurar o `docker-compose.yml` para rodar o PostgreSQL.
+- [X] Configurar ambiente virtual Python (ex: `venv`) e arquivos de dependências iniciais (`requirements.txt`).
+- [X] Configurar framework de testes (`pytest`).
+
+> **Nota da Fase 1:**
+> - Repositório Git inicializado com commit **`0d63c5a`** (branch `main`). O repositório **remoto** (`github.com/sidneylcarneiro/gupy-scraper`) ainda **não foi adicionado/sincronizado** por exigir autenticação. Pendência: executar `git remote add origin <url>` e `git push -u origin main`.
+> - PostgreSQL validado com sucesso: container `gupy_scraper_postgres` **healthy** em `0.0.0.0:5434→5432` (porta ajustada de 5432 para 5434 devido a colisão com PostgreSQL local do host e outro container `agendamento_db`).
+> - `pytest` configurado e testado com sucesso (1 teste de smoke aprovado).
 
 ## ⚪ Fase 2: Domínio e Casos de Uso (DDD & TDD)
 
