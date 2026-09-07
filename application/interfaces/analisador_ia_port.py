@@ -14,3 +14,10 @@ class IAnalisadorIA(Protocol):
     def extrair_palavras_chave(self, descricao_vaga: str) -> list[str]:
         """Extrai as palavras-chave tecnicas da descricao da vaga."""
         ...
+
+    def analisar_perfil(self, vaga_keywords: list[str], perfil_candidato: str) -> dict:
+        """Compara as palavras-chave da vaga com o perfil do candidato.
+
+        Retorna dict com as chaves 'aderentes' e 'faltantes'.
+        """
+        ...

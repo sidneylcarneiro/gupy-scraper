@@ -68,8 +68,8 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 
 ## 🟡 Fase 4: Inteligência Artificial (Em andamento)
 
-- [~] Integrar APIs de IA na camada de infraestrutura. *(Concluído: adaptador real `LLMAnalisador` com DeepSeek (SDK OpenAI, `base_url=https://api.deepseek.com`). Aguarda apenas a inserção da `LLM_API_KEY` no `.env` para validação ponta a ponta.)*
-- [ ] Desenvolver os casos de uso de análise de perfil e mock interview. *(Primeiro entregue: `AnalisarAderenciaUseCase` — extração de palavras-chave da vaga.)*
+- [~] Integrar APIs de IA na camada de infraestrutura. *(Concluído: adaptador real `LLMAnalisador` com DeepSeek (SDK OpenAI, `base_url=https://api.deepseek.com`), validado contra a API com a `LLM_API_KEY`.)*
+- [~] Desenvolver os casos de uso de análise de perfil e mock interview. *(Entregues: `AnalisarAderenciaUseCase` (extração de palavras-chave) e `AnalisarPerfilCandidatoUseCase` (match aderentes/faltantes). Mock interview pendente.)*
 
 > **Nota da Fase 4 (progresso):**
 > - Port `IAnalisadorIA` (Protocol `@runtime_checkable`) em `application/interfaces/analisador_ia_port.py` com `extrair_palavras_chave(descricao_vaga: str) -> list[str]`.
@@ -78,6 +78,7 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - TDD: **8 testes** do adaptador com `unittest.mock.patch` no client OpenAI (nada de rede): extração + kwargs da chamada (`model`, `temperature`, mensagens, base_url), limpeza de markdown `json`/simples, falha da API → `[]`, descrição vazia → `[]` sem chamar a API, `ValueError` sem key, key do `.env` e precedência da key explícita. 5 testes do use case com fakes. Suíte: **21 passed**.
 > - `scripts/test_deepseek.py`: **EXECUTADO COM SUCESSO contra a API real do DeepSeek** — analisou a vaga "Pessoa Desenvolvedora Backend Python Especialista I (Venda Direta)" (Grupo Boticário) e retornou 43 palavras-chave técnicas e comportamentais (Python, Django, AWS, CI/CD, Scrum, GenAI, Clean Code, soft skills etc.).
 > - **Correção de infraestrutura de testes**: os testes de integração usavam o MESMO banco de desenvolvimento e o `drop_all` do teardown apagava as vagas do pipeline. Agora usam o banco dedicado `gupy_scraper_test` (derivado da `DATABASE_URL`), isolando pytest dos dados reais. Suíte: **21 passed**.
+> - **Match de perfil (item 2, otimização de custos):** port `IAnalisadorIA` ganhou `analisar_perfil(vaga_keywords, perfil_candidato) -> dict`; `LLMAnalisador.analisar_perfil` usa **prompt sistêmico mínimo** (4 linhas) exigindo JSON puro `{"aderentes": [...], "faltantes": [...]}`, `temperature=0.1`, normalização do parse (chaves ausentes → `[]`), `try/except` → `{}` e guarda-clause `{}` sem chamar a API para entradas vazias (zero tokens). Caso de uso `AnalisarPerfilCandidatoUseCase` (application/use_cases) delega ao port. TDD: 3 testes do use case com `AnalisadorFake` + 4 testes novos do adaptador com patch da OpenAI — **custo zero de tokens**. Suíte: **28 passed**.
 
 ## ⚪ Fase 5: Interface (FastAPI e HTMX)
 

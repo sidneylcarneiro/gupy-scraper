@@ -66,3 +66,44 @@ class LLMAnalisador:
         except Exception as erro:
             print(f"Erro ao analisar com LLM: {erro}")
             return []
+
+    def analisar_perfil(self, vaga_keywords: list[str], perfil_candidato: str) -> dict:
+        """Compara as palavras-chave da vaga com o perfil do candidato.
+
+        Retorna {'aderentes': [...], 'faltantes': [...]} ou dict vazio em caso
+        de falha, para nao quebrar o fluxo do caso de uso.
+        """
+        if not vaga_keywords or not perfil_candidato.strip():
+            return {}
+
+        prompt = (
+            "Compare as keywords da vaga com o perfil do candidato.\n"
+            'Responda SOMENTE JSON: {"aderentes": ["..."], "faltantes": ["..."]}\n'
+            "Sem texto extra.\n"
+            f"Vaga: {vaga_keywords}\n"
+            f"Perfil: {perfil_candidato}"
+        )
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.modelo,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+
+            resposta_texto = response.choices[0].message.content.strip()
+
+            # Limpeza caso a IA insira blocos de codigo markdown
+            if resposta_texto.startswith("```json"):
+                resposta_texto = resposta_texto[7:-3].strip()
+            elif resposta_texto.startswith("```"):
+                resposta_texto = resposta_texto[3:-3].strip()
+
+            resultado = json.loads(resposta_texto)
+            return {
+                "aderentes": resultado.get("aderentes", []),
+                "faltantes": resultado.get("faltantes", []),
+            }
+        except Exception as erro:
+            print(f"Erro ao analisar perfil com LLM: {erro}")
+            return {}

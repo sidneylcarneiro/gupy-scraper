@@ -100,3 +100,60 @@ def test_deve_preferir_api_key_informada_no_construtor(monkeypatch):
         analisador = LLMAnalisador(api_key="chave-explicita")
 
     assert analisador.api_key == "chave-explicita"
+
+
+def test_deve_analisar_perfil_e_retornar_aderentes_e_faltantes():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm(
+            '{"aderentes": ["Python"], "faltantes": ["AWS"]}'
+        )
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.analisar_perfil(
+            vaga_keywords=["Python", "AWS"], perfil_candidato="Dev Python"
+        )
+
+    assert resultado == {"aderentes": ["Python"], "faltantes": ["AWS"]}
+
+    kwargs = cliente.chat.completions.create.call_args.kwargs
+    conteudo = kwargs["messages"][0]["content"]
+    assert kwargs["model"] == "deepseek-chat"
+    assert kwargs["temperature"] == 0.1
+    assert '"aderentes"' in conteudo
+    assert "Python" in conteudo
+    assert "AWS" in conteudo
+
+
+def test_deve_normalizar_resposta_do_perfil_sem_chaves_completas():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm('{"aderentes": ["Docker"]}')
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.analisar_perfil(vaga_keywords=["Docker"], perfil_candidato="DevOps")
+
+    assert resultado == {"aderentes": ["Docker"], "faltantes": []}
+
+
+def test_deve_retornar_dict_vazio_quando_analise_de_perfil_falha():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.side_effect = RuntimeError("API fora do ar")
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.analisar_perfil(vaga_keywords=["Python"], perfil_candidato="perfil")
+
+    assert resultado == {}
+
+
+def test_deve_retornar_dict_vazio_sem_chamar_llm_para_entradas_vazias():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+
+        assert analisador.analisar_perfil(vaga_keywords=[], perfil_candidato="perfil") == {}
+        assert analisador.analisar_perfil(vaga_keywords=["Python"], perfil_candidato="   ") == {}
+
+    cliente.chat.completions.create.assert_not_called()
