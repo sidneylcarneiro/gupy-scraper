@@ -7,5 +7,7 @@ pytest-cov==5.*
 
 # Acessível a banco de dados (PostgreSQL) - Fase 3
 psycopg2-binary==2.9.*
+SQLAlchemy==2.0.*
+python-dotenv==1.*
 
 # A camada de scraping será adicionada na Fase 3 (Playwright/Selenium).

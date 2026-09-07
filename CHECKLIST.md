@@ -32,11 +32,18 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - Port `IVagaRepository` (ABC) criado em `domain/repositories/vaga_repository.py` com os métodos `salvar(vaga)` e `buscar_por_url(url)` — apenas contrato, sem infraestrutura.
 > - TDD aplicado na ordem correta: teste criado primeiro em `tests/unit/test_salvar_vaga_use_case.py` com repositório Mock em memória (estado RED confirmado com `ModuleNotFoundError`), depois implementação mínima de `SalvarVagaUseCase` em `application/use_cases/salvar_vaga.py` (estado GREEN: 2 passed).
 
-## ⚪ Fase 3: Infraestrutura (Scraping e Banco de Dados)
+## 🟡 Fase 3: Infraestrutura (Scraping e Banco de Dados) (Em andamento)
 
-- [ ] Implementar os Adaptadores de Banco de Dados (SQLAlchemy com PostgreSQL).
-- [ ] Implementar o motor de Scraping isolado na camada de infraestrutura.
-- [ ] Criar testes de integração para o Scraper e o Banco.
+- [X] Implementar os Adaptadores de Banco de Dados (SQLAlchemy com PostgreSQL).
+- [ ] Implementar o motor de Scraping isolado na camada de infraestrutura. *(Esqueleto criado: `GupyScraper` com `URL_BUSCA`, `acessar_pagina()` e `extrair_vagas()` vazios — aguardando o HTML real da Gupy para definir os seletores.)*
+- [ ] Criar testes de integração para o Scraper e o Banco. *(Banco: ✅ `tests/integration/test_postgres_repository.py` — 2 testes passando contra o PostgreSQL real. Scraper: pendente.)*
+
+> **Nota da Fase 3 (progresso parcial):**
+> - `infrastructure/database/database.py`: engine + `SessionLocal` + `Base` lendo `DATABASE_URL` do `.env` (PostgreSQL Docker na porta **5434**, `pool_pre_ping=True`).
+> - `infrastructure/database/models.py`: modelo ORM `VagaModel` mapeado para a tabela **`vagas`** (tipagens modernas `Mapped`/`mapped_column` do SQLAlchemy 2.0; `url` com `unique=True`; enums com `native_enum=False`).
+> - `infrastructure/database/postgres_vaga_repository.py`: adaptador `PostgresVagaRepository` implementando o port `IVagaRepository` (conversão entidade ↔ modelo, commit/rollback/close por operação).
+> - `requirements.txt`: adicionados `SQLAlchemy==2.0.*` e `python-dotenv==1.*` (instalados no venv).
+> - TDD respeitado: teste de integração criado primeiro (RED com `ModuleNotFoundError`), depois implementação (GREEN: 2 passed em 3.64s). Suíte completa: **4 passed**.
 
 ## ⚪ Fase 4: Inteligência Artificial
 
