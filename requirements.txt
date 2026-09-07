@@ -10,4 +10,5 @@ psycopg2-binary==2.9.*
 SQLAlchemy==2.0.*
 python-dotenv==1.*
 
-# A camada de scraping será adicionada na Fase 3 (Playwright/Selenium).
+# Web scraping (Playwright) - Fase 3
+playwright==1.62.*

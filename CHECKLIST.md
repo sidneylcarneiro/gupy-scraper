@@ -32,18 +32,20 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - Port `IVagaRepository` (ABC) criado em `domain/repositories/vaga_repository.py` com os métodos `salvar(vaga)` e `buscar_por_url(url)` — apenas contrato, sem infraestrutura.
 > - TDD aplicado na ordem correta: teste criado primeiro em `tests/unit/test_salvar_vaga_use_case.py` com repositório Mock em memória (estado RED confirmado com `ModuleNotFoundError`), depois implementação mínima de `SalvarVagaUseCase` em `application/use_cases/salvar_vaga.py` (estado GREEN: 2 passed).
 
-## 🟡 Fase 3: Infraestrutura (Scraping e Banco de Dados) (Em andamento)
+## ✅ Fase 3: Infraestrutura (Scraping e Banco de Dados) (Concluída)
 
 - [X] Implementar os Adaptadores de Banco de Dados (SQLAlchemy com PostgreSQL).
-- [ ] Implementar o motor de Scraping isolado na camada de infraestrutura. *(Esqueleto criado: `GupyScraper` com `URL_BUSCA`, `acessar_pagina()` e `extrair_vagas()` vazios — aguardando o HTML real da Gupy para definir os seletores.)*
-- [ ] Criar testes de integração para o Scraper e o Banco. *(Banco: ✅ `tests/integration/test_postgres_repository.py` — 2 testes passando contra o PostgreSQL real. Scraper: pendente.)*
+- [X] Implementar o motor de Scraping isolado na camada de infraestrutura. *(Implementado com Playwright/Chromium headless; seletores validados no HTML real da Gupy fornecido pelo usuário.)*
+- [X] Criar testes de integração para o Scraper e o Banco. *(Banco: `tests/integration/test_postgres_repository.py` — 2 testes contra o PostgreSQL real. Scraper: validado em execução real via `scripts/test_scraper.py` — 12 vagas extraídas.)*
 
-> **Nota da Fase 3 (progresso parcial):**
+> **Nota da Fase 3:**
 > - `infrastructure/database/database.py`: engine + `SessionLocal` + `Base` lendo `DATABASE_URL` do `.env` (PostgreSQL Docker na porta **5434**, `pool_pre_ping=True`).
 > - `infrastructure/database/models.py`: modelo ORM `VagaModel` mapeado para a tabela **`vagas`** (tipagens modernas `Mapped`/`mapped_column` do SQLAlchemy 2.0; `url` com `unique=True`; enums com `native_enum=False`).
 > - `infrastructure/database/postgres_vaga_repository.py`: adaptador `PostgresVagaRepository` implementando o port `IVagaRepository` (conversão entidade ↔ modelo, commit/rollback/close por operação).
-> - `requirements.txt`: adicionados `SQLAlchemy==2.0.*` e `python-dotenv==1.*` (instalados no venv).
-> - TDD respeitado: teste de integração criado primeiro (RED com `ModuleNotFoundError`), depois implementação (GREEN: 2 passed em 3.64s). Suíte completa: **4 passed**.
+> - `infrastructure/scraper/gupy_scraper.py`: `GupyScraper` com Playwright — `URL_BUSCA` conforme definida, seletores reais extraídos do HTML validado (`ul[class*="eco-me1nqn"] > li`, `a[target="_blank"]`, `h3`, `div > p`, `span[data-testid="job-location"]`, `span[data-testid="listing-card-footer"] p`), parsing de "Publicada em: dd/mm/aaaa" via regex + `strptime`, retornando entidades de domínio `Vaga` (`StatusVaga.ATIVA`, `FormatoTrabalho.REMOTO`). A descrição detalhada fica para a página individual da vaga.
+> - `scripts/test_scraper.py`: script manual de validação (fora da suíte pytest). Execução real contra a Gupy: **12 vagas extraídas** (Grupo Boticário, Claro/Hacktown 2026, Grupo SysMap, Montreal, Hitss Brasil, Deliver IT, 3S Checkout, Confitec, Pulsus), com título, empresa, URL e data de publicação corretos.
+> - `playwright==1.62.*` adicionado ao `requirements.txt` e instalado no venv; Chromium **151.0.7922.34** instalado em `~/.cache/ms-playwright` (`chromium-1234` e `chromium_headless_shell-1234` + marca `INSTALLATION_COMPLETE`). *Observação: o `cdn.playwright.dev` estava inacessível na rede (timeout/ECONNRESET), então o download foi feito manualmente do CDN oficial do Chrome for Testing (`storage.googleapis.com`) e extraído no layout esperado pelo Playwright.*
+> - TDD respeitado: teste de integração do banco criado primeiro (RED → GREEN). Suíte completa: **4 passed** (2 unitários + 2 integração).
 
 ## ⚪ Fase 4: Inteligência Artificial
 
