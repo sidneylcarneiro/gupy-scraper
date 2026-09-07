@@ -1,7 +1,7 @@
 """Scraper da Gupy usando Playwright (camada de infraestrutura).
 
-Os seletores abaixo foram validados contra o HTML real da pagina de busca
-da Gupy. Nao invente seletores novos sem antes validar o HTML atual.
+Os seletores abaixo foram validados contra o HTML real da Gupy (listagem e
+pagina de detalhes). Nao invente seletores novos sem antes validar o HTML.
 """
 
 import re
@@ -14,7 +14,11 @@ from domain.entities.vaga import FormatoTrabalho, StatusVaga, Vaga
 
 
 class GupyScraper:
-    """Responsavel por acessar a pagina de busca da Gupy e extrair as vagas."""
+    """Extrai vagas da listagem e os detalhes de cada pagina individual.
+
+    Gerencia uma unica instancia de browser/aba reutilizada entre chamadas
+    (otimizacao): abre sob demanda na primeira extracao e libera em fechar().
+    """
 
     URL_BUSCA = (
         "https://portal.gupy.io/job-search/term=python&jobTypes[]="
@@ -30,34 +34,113 @@ class GupyScraper:
     SELETOR_LOCALIZACAO = 'span[data-testid="job-location"]'
     SELETOR_FOOTER = 'span[data-testid="listing-card-footer"] p'
 
-    def acessar_pagina(self, page: Page) -> None:
+    SELETOR_SECAO_DETALHE = 'div[data-testid="text-section"]'
+    SELETOR_TITULO_SECAO = "h2"
+    SELETOR_CONTEUDO_SECAO = "div"
+
+    TIMEOUT_SELETOR_MS = 15000
+    TIMEOUT_NAVEGACAO_MS = 60000
+    TENTATIVAS_NAVEGACAO = 2
+
+    def __init__(self) -> None:
+        self._playwright = None
+        self._browser = None
+        self._page: Optional[Page] = None
+
+    def __enter__(self) -> "GupyScraper":
+        self._garantir_page()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.fechar()
+
+    def fechar(self) -> None:
+        """Encerra aba, browser e Playwright (seguro se nunca foram abertos)."""
+        if self._browser is not None:
+            try:
+                self._browser.close()
+            except Exception:
+                pass
+            self._browser = None
+        if self._playwright is not None:
+            try:
+                self._playwright.stop()
+            except Exception:
+                pass
+            self._playwright = None
+        self._page = None
+
+    def _garantir_page(self) -> Page:
+        """Abre o browser/aba na primeira utilizacao e reutiliza nas seguintes."""
+        if self._page is None:
+            self._playwright = sync_playwright().start()
+            self._browser = self._playwright.chromium.launch(headless=True)
+            self._page = self._browser.new_page()
+        return self._page
+
+    def _navegar(self, page: Page, url: str) -> None:
+        """Navega ate a URL e faz uma nova tentativa em caso de falha transitoria.
+
+        Usa domcontentloaded (a Gupy e uma SPA; esperar o evento load completo
+        pode estourar o timeout em redes lentas). O conteudo relevante e
+        garantido pelo wait_for_selector de cada fluxo.
+        """
+        ultimo_erro: Optional[Exception] = None
+        for _ in range(self.TENTATIVAS_NAVEGACAO):
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=self.TIMEOUT_NAVEGACAO_MS)
+                return
+            except Exception as erro:
+                ultimo_erro = erro
+        raise ultimo_erro
+
+    def acessar_pagina(self) -> None:
         """Navega ate a URL de busca e aguarda a lista de vagas carregar."""
-        page.goto(self.URL_BUSCA)
-        page.wait_for_selector(self.SELETOR_LISTA_VAGAS, timeout=15000)
+        page = self._garantir_page()
+        self._navegar(page, self.URL_BUSCA)
+        page.wait_for_selector(self.SELETOR_LISTA_VAGAS, timeout=self.TIMEOUT_SELETOR_MS)
 
     def extrair_vagas(self) -> list[Vaga]:
-        """Abre o navegador headless, acessa a busca e extrai as vagas listadas."""
-        vagas_extraidas: list[Vaga] = []
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
-            self.acessar_pagina(page)
-
-            for card in page.locator(self.SELETOR_CARD_VAGA).all():
-                vagas_extraidas.append(self._extrair_vaga_do_card(card))
-
-            browser.close()
-
-        return vagas_extraidas
+        """Extrai as vagas da listagem (dados lidos na hora, sem Locator pendente)."""
+        self.acessar_pagina()
+        cards = self._page.locator(self.SELETOR_CARD_VAGA).all()
+        return [self._extrair_vaga_do_card(card) for card in cards]
 
     def extrair_detalhes_vaga(self, url: str) -> str:
-        """Acessa a pagina individual da vaga e extrai a descricao completa.
+        """Extrai a descricao completa da pagina individual da vaga.
 
-        ATENCAO: esqueleto propositadamente vazio. Implementar somente quando
-        o HTML da pagina de detalhes for fornecido (nao inventar seletores).
+        Percorre as secoes (div[data-testid="text-section"]) e monta uma unica
+        string no formato '### Titulo\\nconteudo\\n\\n'. Em qualquer falha
+        (timeout, pagina invalida etc.) retorna string vazia para nao quebrar
+        o scraper inteiro.
         """
-        return ""
+        if not url:
+            return ""
+        try:
+            page = self._garantir_page()
+            self._navegar(page, url)
+            page.wait_for_selector(self.SELETOR_SECAO_DETALHE, timeout=self.TIMEOUT_SELETOR_MS)
+            secoes = page.locator(self.SELETOR_SECAO_DETALHE).all()
+            partes = [self._extrair_secao(secao) for secao in secoes]
+            return "".join(partes).strip()
+        except Exception:
+            return ""
+
+    def _extrair_secao(self, secao: Locator) -> str:
+        """Extrai o titulo (h2) e o conteudo (ultimo div) de uma secao."""
+        titulo_locator = secao.locator(self.SELETOR_TITULO_SECAO)
+        titulo = titulo_locator.first.inner_text(timeout=5000) if titulo_locator.count() > 0 else ""
+
+        conteudo_locator = secao.locator(self.SELETOR_CONTEUDO_SECAO)
+        conteudo = conteudo_locator.last.inner_text(timeout=5000) if conteudo_locator.count() > 0 else ""
+
+        return self._formatar_secao(titulo, conteudo)
+
+    @staticmethod
+    def _formatar_secao(titulo: str, conteudo: str) -> str:
+        """Formata uma secao como '### Titulo\\nconteudo\\n\\n'."""
+        cabecalho = titulo.strip() or "SECAO"
+        return f"### {cabecalho}\n{conteudo.strip()}\n\n"
 
     def _extrair_vaga_do_card(self, card: Locator) -> Vaga:
         """Extrai os dados de um unico card (<li>) da listagem."""
@@ -85,7 +168,7 @@ class GupyScraper:
             empresa=empresa,
             localizacao=localizacao,
             formato=FormatoTrabalho.REMOTO,
-            descricao="",  # descricao detalhada sera extraida da pagina individual da vaga
+            descricao="",  # preenchida na orquestracao via extrair_detalhes_vaga
             url=url or "",
             data_publicacao=self._extrair_data_publicacao(footer_texto),
             status=StatusVaga.ATIVA,

@@ -15,18 +15,17 @@ class OrquestradorScraper:
         self._salvar_vaga_use_case = salvar_vaga_use_case
 
     def executar(self) -> list[Vaga]:
-        """Extrai as vagas da listagem, busca os detalhes de cada uma e persiste.
+        """Extrai, enriquece e salva as vagas reutilizando um unico browser.
 
-        Para cada vaga da listagem:
-        1. Extrai a descricao profunda da pagina individual da vaga;
-        2. Atualiza o atributo `descricao` da entidade;
-        3. Passa a vaga completa para o SalvarVagaUseCase.
+        O browser e aberto na primeira extracao e fechado ao final da
+        orquestracao (mesmo em caso de erro), evitando abrir/fechar por URL.
         """
         vagas_processadas: list[Vaga] = []
-
-        for vaga in self._scraper.extrair_vagas():
-            descricao = self._scraper.extrair_detalhes_vaga(vaga.url)
-            vaga_completa = dataclasses.replace(vaga, descricao=descricao)
-            vagas_processadas.append(self._salvar_vaga_use_case.executar(vaga_completa))
-
+        try:
+            for vaga in self._scraper.extrair_vagas():
+                descricao = self._scraper.extrair_detalhes_vaga(vaga.url)
+                vaga_completa = dataclasses.replace(vaga, descricao=descricao)
+                vagas_processadas.append(self._salvar_vaga_use_case.executar(vaga_completa))
+        finally:
+            self._scraper.fechar()
         return vagas_processadas

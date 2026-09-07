@@ -55,12 +55,16 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 - [X] Criar o port `IExtratorDeVagas` (Protocol) em `application/interfaces/extrator_vagas_port.py` — a aplicação depende apenas da abstração, não do Playwright (DIP).
 - [X] Criar o ponto de entrada `scripts/main.py` (Composition Root): engine/`SessionLocal` → `PostgresVagaRepository` → `SalvarVagaUseCase` → `GupyScraper` → `OrquestradorScraper.executar()` + `create_all` do schema. **Ainda não executado** (extração profunda vazia).
 - [X] Testes unitários do orquestrador com fakes (sem rede/banco): `tests/unit/test_orquestrador_scraper.py` — enriquecimento de descrição + salvamento de todas as vagas e fallback com descrição vazia.
-- [ ] Implementar os seletores reais de `extrair_detalhes_vaga` *(aguardando o HTML da página individual da vaga)*.
-- [ ] Executar o pipeline end-to-end real (`scripts/main.py`): scraping profundo → PostgreSQL.
+- [X] Implementar os seletores reais de `extrair_detalhes_vaga` *(implementado com o HTML validado: `div[data-testid="text-section"]`, título via `h2`, conteúdo via último `div`, saída concatenada como `### Titulo\nconteudo\n\n`; falhas de navegação/timeout tratadas com try/except retornando `""`)*.
+- [X] Executar o pipeline end-to-end real (`scripts/main.py`): scraping profundo → PostgreSQL. **✅ Executado com sucesso: 12/12 vagas persistidas, todas com descrição (2.275 a 7.514 caracteres).**
 
 > **Nota da subtarefa:**
-> - Orquestrador validado por testes unitários com `ExtratorFake` e repositório em memória (sem tocar em rede ou banco). Suíte: **6 passed**.
-> - `scripts/main.py` valida compilação (`py_compile` OK) mas permanece **não executado por design** até a implementação da extração profunda.
+> - Orquestrador validado por testes unitários com `ExtratorFake` e repositório em memória (sem tocar em rede ou banco).
+> - **Otimização do scraper (conforme solicitado):** `GupyScraper` agora gerencia 1 única instância de browser/aba — abre sob demanda (`_garantir_page`) e reutiliza com `page.goto()`; fechamento garantido pelo orquestrador no `finally` (e suporte a context manager `with`). Port `IExtratorDeVagas` ganhou o método `fechar()`.
+> - **Navegação resiliente:** `goto` com `wait_until="domcontentloaded"`, timeout de 60s e 1 retry (a rede instável estourava o timeout padrão de 30s no evento `load` da SPA da Gupy). Seletores inalterados.
+> - **Idempotência do repositório (upsert por URL):** `salvar()` atualiza o registro quando a URL já existe, mantendo o pipeline re-executável sem violar a constraint unique — coberto pelo teste de integração `test_nao_deve_duplicar_vaga_com_mesma_url` (PostgreSQL real).
+> - **Execução real:** `scripts/main.py` rodou de ponta a ponta (listagem → detalhe por vaga → upsert). Log do console listou as 12 vagas com trecho da descrição; consulta direta no PostgreSQL (`SELECT id, empresa, titulo, LENGTH(descricao) FROM vagas`) confirmou 12 linhas com descrições entre 2.275 e 7.514 caracteres.
+> - Suíte final: **11 passed** (7 unitários + 4 integração).
 
 ## ⚪ Fase 4: Inteligência Artificial
 

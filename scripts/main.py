@@ -28,7 +28,14 @@ def main() -> None:
     )
 
     vagas = orquestrador.executar()
-    print(f"{len(vagas)} vagas extraidas, enriquecidas com descricao e salvas no PostgreSQL.")
+
+    print(f"\n=== {len(vagas)} vagas salvas no PostgreSQL ===\n")
+    for vaga in vagas:
+        descricao = vaga.descricao.strip()
+        trecho = descricao[:80] + "..." if len(descricao) > 80 else (descricao or "(sem descricao)")
+        print(f"- [{vaga.empresa}] {vaga.titulo}")
+        print(f"  URL: {vaga.url}")
+        print(f"  Descricao: {trecho}\n")
 
 
 if __name__ == "__main__":

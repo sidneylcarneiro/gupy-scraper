@@ -13,6 +13,7 @@ class ExtratorFake:
         self._vagas = list(vagas)
         self._detalhes_por_url = dict(detalhes_por_url)
         self.urls_consultadas = []
+        self.fechado = False
 
     def extrair_vagas(self):
         return list(self._vagas)
@@ -20,6 +21,9 @@ class ExtratorFake:
     def extrair_detalhes_vaga(self, url):
         self.urls_consultadas.append(url)
         return self._detalhes_por_url.get(url, "")
+
+    def fechar(self):
+        self.fechado = True
 
 
 class RepositorioEmMemoria:
@@ -76,6 +80,7 @@ def test_deve_enriquecer_descricao_e_salvar_todas_as_vagas():
     ]
     assert len(repositorio.vagas_salvas) == 2
     assert repositorio.vagas_salvas[0].descricao == "Descricao profunda da vaga 1"
+    assert extrator.fechado is True  # browser fechado ao final da orquestracao
 
 
 def test_deve_salvar_vaga_com_descricao_vazia_quando_detalhe_nao_disponivel():

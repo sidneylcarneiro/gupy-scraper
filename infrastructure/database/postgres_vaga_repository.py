@@ -39,6 +39,17 @@ def _para_entidade(modelo: VagaModel) -> Vaga:
     )
 
 
+def _atualizar_modelo(modelo: VagaModel, vaga: Vaga) -> None:
+    """Copia os campos da entidade para o modelo ja persistido (preserva id/url)."""
+    modelo.titulo = vaga.titulo
+    modelo.empresa = vaga.empresa
+    modelo.localizacao = vaga.localizacao
+    modelo.formato = vaga.formato
+    modelo.descricao = vaga.descricao
+    modelo.data_publicacao = vaga.data_publicacao
+    modelo.status = vaga.status
+
+
 class PostgresVagaRepository(IVagaRepository):
     """Implementa a persistencia de vagas em PostgreSQL via SQLAlchemy."""
 
@@ -46,9 +57,18 @@ class PostgresVagaRepository(IVagaRepository):
         self._session_factory = session_factory
 
     def salvar(self, vaga: Vaga) -> None:
+        """Insere a vaga ou atualiza a existente quando a URL ja consta (upsert).
+
+        A coluna url e unica na tabela `vagas`; o upsert mantem o pipeline
+        re-executavel sem violar a constraint e sem duplicar registros.
+        """
         session: Session = self._session_factory()
         try:
-            session.add(_para_modelo(vaga))
+            modelo = session.query(VagaModel).filter(VagaModel.url == vaga.url).one_or_none()
+            if modelo is None:
+                session.add(_para_modelo(vaga))
+            else:
+                _atualizar_modelo(modelo, vaga)
             session.commit()
         except Exception:
             session.rollback()

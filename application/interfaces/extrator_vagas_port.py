@@ -19,3 +19,7 @@ class IExtratorDeVagas(Protocol):
     def extrair_detalhes_vaga(self, url: str) -> str:
         """Extrai a descricao detalhada da pagina individual da vaga."""
         ...
+
+    def fechar(self) -> None:
+        """Libera os recursos do navegador (browser/aba), quando houver."""
+        ...
