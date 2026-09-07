@@ -1,0 +1,28 @@
+# Ambiente Virtual
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Ambiente / Segredos
+.env
+.env.local
+
+# Banco de dados local
+*.db
+*.sqlite3
+
+# Cache e Logs
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Docker
+*.pid
