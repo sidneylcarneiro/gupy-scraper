@@ -8,8 +8,9 @@ from infrastructure.scraper.gupy_scraper import GupyScraper
 
 
 def main() -> None:
+    url_busca = input("Cole a URL da busca da Gupy: ").strip()
     scraper = GupyScraper()
-    vagas = scraper.extrair_vagas()
+    vagas = scraper.extrair_vagas(url_busca)
 
     print(f"\n=== {len(vagas)} vagas extraidas da Gupy ===\n")
     for vaga in vagas:

@@ -20,12 +20,6 @@ class GupyScraper:
     (otimizacao): abre sob demanda na primeira extracao e libera em fechar().
     """
 
-    URL_BUSCA = (
-        "https://portal.gupy.io/job-search/term=python&jobTypes[]="
-        "vacancy_type_effective,vacancy_type_talent_pool,vacancy_type_volunteer"
-        "&workplaceTypes[]=remote"
-    )
-
     SELETOR_LISTA_VAGAS = 'ul[class*="eco-me1nqn"]'
     SELETOR_CARD_VAGA = 'ul[class*="eco-me1nqn"] > li'
     SELETOR_LINK = 'a[target="_blank"]'
@@ -94,15 +88,15 @@ class GupyScraper:
                 ultimo_erro = erro
         raise ultimo_erro
 
-    def acessar_pagina(self) -> None:
-        """Navega ate a URL de busca e aguarda a lista de vagas carregar."""
+    def acessar_pagina(self, url_busca: str) -> None:
+        """Navega ate a URL de busca informada e aguarda a lista de vagas carregar."""
         page = self._garantir_page()
-        self._navegar(page, self.URL_BUSCA)
+        self._navegar(page, url_busca)
         page.wait_for_selector(self.SELETOR_LISTA_VAGAS, timeout=self.TIMEOUT_SELETOR_MS)
 
-    def extrair_vagas(self) -> list[Vaga]:
-        """Extrai as vagas da listagem (dados lidos na hora, sem Locator pendente)."""
-        self.acessar_pagina()
+    def extrair_vagas(self, url_busca: str) -> list[Vaga]:
+        """Extrai as vagas da listagem da URL de busca informada."""
+        self.acessar_pagina(url_busca)
         cards = self._page.locator(self.SELETOR_CARD_VAGA).all()
         return [self._extrair_vaga_do_card(card) for card in cards]
 

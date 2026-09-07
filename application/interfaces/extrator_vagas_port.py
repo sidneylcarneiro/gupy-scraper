@@ -13,8 +13,8 @@ from domain.entities.vaga import Vaga
 class IExtratorDeVagas(Protocol):
     """Contrato dos extratores de vagas (listagem + detalhes)."""
 
-    def extrair_vagas(self) -> list[Vaga]:
-        """Extrai as vagas da listagem de busca."""
+    def extrair_vagas(self, url_busca: str) -> list[Vaga]:
+        """Extrai as vagas da listagem de busca informada."""
         ...
 
     def extrair_detalhes_vaga(self, url: str) -> str:

@@ -14,7 +14,7 @@ class OrquestradorScraper:
         self._scraper = scraper
         self._salvar_vaga_use_case = salvar_vaga_use_case
 
-    def executar(self) -> list[Vaga]:
+    def executar(self, url_busca: str) -> list[Vaga]:
         """Extrai, enriquece e salva as vagas reutilizando um unico browser.
 
         O browser e aberto na primeira extracao e fechado ao final da
@@ -22,7 +22,7 @@ class OrquestradorScraper:
         """
         vagas_processadas: list[Vaga] = []
         try:
-            for vaga in self._scraper.extrair_vagas():
+            for vaga in self._scraper.extrair_vagas(url_busca):
                 descricao = self._scraper.extrair_detalhes_vaga(vaga.url)
                 vaga_completa = dataclasses.replace(vaga, descricao=descricao)
                 vagas_processadas.append(self._salvar_vaga_use_case.executar(vaga_completa))

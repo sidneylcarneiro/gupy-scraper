@@ -12,10 +12,12 @@ class ExtratorFake:
     def __init__(self, vagas, detalhes_por_url):
         self._vagas = list(vagas)
         self._detalhes_por_url = dict(detalhes_por_url)
+        self.urls_busca_recebidas = []
         self.urls_consultadas = []
         self.fechado = False
 
-    def extrair_vagas(self):
+    def extrair_vagas(self, url_busca: str):
+        self.urls_busca_recebidas.append(url_busca)
         return list(self._vagas)
 
     def extrair_detalhes_vaga(self, url):
@@ -54,6 +56,9 @@ def _criar_vaga(url: str, titulo: str = "Dev Python") -> Vaga:
     )
 
 
+URL_BUSCA_FALSA = "https://portal.gupy.io/fake-search"
+
+
 def test_deve_enriquecer_descricao_e_salvar_todas_as_vagas():
     vaga1 = _criar_vaga("https://acme.gupy.io/job/1")
     vaga2 = _criar_vaga("https://acme.gupy.io/job/2", titulo="Dev Senior")
@@ -69,8 +74,9 @@ def test_deve_enriquecer_descricao_e_salvar_todas_as_vagas():
         salvar_vaga_use_case=SalvarVagaUseCase(repositorio),
     )
 
-    resultado = orquestrador.executar()
+    resultado = orquestrador.executar(URL_BUSCA_FALSA)
 
+    assert extrator.urls_busca_recebidas == [URL_BUSCA_FALSA]  # url de busca repassada ao scraper
     assert len(resultado) == 2
     assert resultado[0].descricao == "Descricao profunda da vaga 1"
     assert resultado[1].descricao == "Descricao profunda da vaga 2"
@@ -93,7 +99,7 @@ def test_deve_salvar_vaga_com_descricao_vazia_quando_detalhe_nao_disponivel():
         salvar_vaga_use_case=SalvarVagaUseCase(repositorio),
     )
 
-    resultado = orquestrador.executar()
+    resultado = orquestrador.executar(URL_BUSCA_FALSA)
 
     assert len(resultado) == 1
     assert resultado[0].descricao == ""

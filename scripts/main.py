@@ -27,7 +27,8 @@ def main() -> None:
         salvar_vaga_use_case=salvar_vaga_use_case,
     )
 
-    vagas = orquestrador.executar()
+    url_busca = input("Cole a URL da busca da Gupy: ").strip()
+    vagas = orquestrador.executar(url_busca)
 
     print(f"\n=== {len(vagas)} vagas salvas no PostgreSQL ===\n")
     for vaga in vagas:

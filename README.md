@@ -1,6 +1,6 @@
 # Assistente Automático de Carreira (Gupy Scraper) 🚀
 
-Este projeto é uma ferramenta automatizada desenvolvida para busca, extração profunda e gestão de candidaturas para vagas de **Desenvolvedor Python Júnior (Foco: Remoto)** na plataforma Gupy. 
+Este projeto é uma ferramenta automatizada para busca, extração profunda e gestão de candidaturas de **qualquer vaga na plataforma Gupy**: basta colar a URL de busca com os filtros desejados (cargo, localidade, modalidade etc.) e a ferramenta extrai todas as vagas do resultado. 
 
 Além de facilitar a aplicação em vagas, este projeto serve como um robusto **portfólio de engenharia de software** com integração de Inteligência Artificial, seguindo rigorosos padrões da indústria.
 
