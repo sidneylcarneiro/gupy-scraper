@@ -4,11 +4,12 @@ A aplicacao depende apenas deste contrato; a implementacao concreta
 (Playwright) vive na camada de infraestrutura (Inversao de Dependencia).
 """
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from domain.entities.vaga import Vaga
 
 
+@runtime_checkable
 class IExtratorDeVagas(Protocol):
     """Contrato dos extratores de vagas (listagem + detalhes)."""
 

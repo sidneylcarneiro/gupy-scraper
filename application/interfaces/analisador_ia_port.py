@@ -1,0 +1,16 @@
+"""Port para servicos de analise por IA (camada de aplicacao).
+
+A aplicacao depende apenas deste contrato; a implementacao concreta (LLM)
+vive na camada de infraestrutura (Inversao de Dependencia).
+"""
+
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class IAnalisadorIA(Protocol):
+    """Contrato dos analisadores de descricao de vaga por IA."""
+
+    def extrair_palavras_chave(self, descricao_vaga: str) -> list[str]:
+        """Extrai as palavras-chave tecnicas da descricao da vaga."""
+        ...

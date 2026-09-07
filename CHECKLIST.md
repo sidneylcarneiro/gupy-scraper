@@ -66,10 +66,17 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - **Execução real:** `scripts/main.py` rodou de ponta a ponta (listagem → detalhe por vaga → upsert). Log do console listou as 12 vagas com trecho da descrição; consulta direta no PostgreSQL (`SELECT id, empresa, titulo, LENGTH(descricao) FROM vagas`) confirmou 12 linhas com descrições entre 2.275 e 7.514 caracteres.
 > - Suíte final: **11 passed** (7 unitários + 4 integração).
 
-## ⚪ Fase 4: Inteligência Artificial
+## 🟡 Fase 4: Inteligência Artificial (Em andamento)
 
-- [ ] Integrar APIs de IA na camada de infraestrutura.
-- [ ] Desenvolver os casos de uso de análise de perfil e mock interview.
+- [~] Integrar APIs de IA na camada de infraestrutura. *(Em andamento: port `IAnalisadorIA` + adaptador `LLMAnalisador` com resposta simulada criados e testados; chamada real ao provedor pendente da chave de API.)*
+- [ ] Desenvolver os casos de uso de análise de perfil e mock interview. *(Primeiro entregue: `AnalisarAderenciaUseCase` — extração de palavras-chave da vaga.)*
+
+> **Nota da Fase 4 (progresso):**
+> - Port `IAnalisadorIA` (Protocol `@runtime_checkable`) em `application/interfaces/analisador_ia_port.py` com `extrair_palavras_chave(descricao_vaga: str) -> list[str]`.
+> - Adaptador `LLMAnalisador` em `infrastructure/external_services/llm_analisador.py`: retorna a lista simulada `["Python", "FastAPI", "Clean Architecture"]`, com `api_key` lida de `LLM_API_KEY` no `.env` (ou informada no construtor, que tem precedência) e campo `modelo` pronto para o provedor real (TODO documentado no código).
+> - Caso de uso `AnalisarAderenciaUseCase` em `application/use_cases/analisar_aderencia_vaga.py`: recebe `IVagaRepository` + `IAnalisadorIA` no construtor; `executar(url_vaga)` busca a vaga no repositório e passa a `descricao` para a IA; levanta `VagaNaoEncontradaError` (sem acionar a IA) quando a URL não existe.
+> - `.env.example`: adicionada a variável `LLM_API_KEY`.
+> - TDD: 5 testes unitários novos com fakes — 2 do use case (fluxo feliz + vaga inexistente sem acionar a IA) e 3 do adaptador (mock, key do `.env`, key explícita). Verificação estrutural: `isinstance(LLMAnalisador(), IAnalisadorIA)` OK; ports `Protocol` agora são `@runtime_checkable` (inclui `IExtratorDeVagas`). Suíte: **16 passed**.
 
 ## ⚪ Fase 5: Interface (FastAPI e HTMX)
 
