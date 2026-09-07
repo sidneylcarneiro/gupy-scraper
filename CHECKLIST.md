@@ -47,6 +47,21 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 > - `playwright==1.62.*` adicionado ao `requirements.txt` e instalado no venv; Chromium **151.0.7922.34** instalado em `~/.cache/ms-playwright` (`chromium-1234` e `chromium_headless_shell-1234` + marca `INSTALLATION_COMPLETE`). *Observação: o `cdn.playwright.dev` estava inacessível na rede (timeout/ECONNRESET), então o download foi feito manualmente do CDN oficial do Chrome for Testing (`storage.googleapis.com`) e extraído no layout esperado pelo Playwright.*
 > - TDD respeitado: teste de integração do banco criado primeiro (RED → GREEN). Suíte completa: **4 passed** (2 unitários + 2 integração).
 
+### 🔁 Subtarefa: Integração End-to-End e Extração Profunda (pós-Fase 3)
+
+- [X] Criar método `extrair_detalhes_vaga(self, url: str) -> str` em `GupyScraper` *(esqueleto: retorna `""` — seletores da página de detalhes pendentes do HTML real, que não será inventado)*.
+- [X] Criar o Application Service `OrquestradorScraper` em `application/services/orquestrador_scraper.py` (recebe o scraper e o `SalvarVagaUseCase` no construtor).
+- [X] Lógica de orquestração no `executar()`: lista as vagas → para cada uma chama `extrair_detalhes_vaga(vaga.url)`, atualiza `descricao` (via `dataclasses.replace`, mantendo imutabilidade do fluxo) → salva pelo `SalvarVagaUseCase`.
+- [X] Criar o port `IExtratorDeVagas` (Protocol) em `application/interfaces/extrator_vagas_port.py` — a aplicação depende apenas da abstração, não do Playwright (DIP).
+- [X] Criar o ponto de entrada `scripts/main.py` (Composition Root): engine/`SessionLocal` → `PostgresVagaRepository` → `SalvarVagaUseCase` → `GupyScraper` → `OrquestradorScraper.executar()` + `create_all` do schema. **Ainda não executado** (extração profunda vazia).
+- [X] Testes unitários do orquestrador com fakes (sem rede/banco): `tests/unit/test_orquestrador_scraper.py` — enriquecimento de descrição + salvamento de todas as vagas e fallback com descrição vazia.
+- [ ] Implementar os seletores reais de `extrair_detalhes_vaga` *(aguardando o HTML da página individual da vaga)*.
+- [ ] Executar o pipeline end-to-end real (`scripts/main.py`): scraping profundo → PostgreSQL.
+
+> **Nota da subtarefa:**
+> - Orquestrador validado por testes unitários com `ExtratorFake` e repositório em memória (sem tocar em rede ou banco). Suíte: **6 passed**.
+> - `scripts/main.py` valida compilação (`py_compile` OK) mas permanece **não executado por design** até a implementação da extração profunda.
+
 ## ⚪ Fase 4: Inteligência Artificial
 
 - [ ] Integrar APIs de IA na camada de infraestrutura.

@@ -51,6 +51,14 @@ class GupyScraper:
 
         return vagas_extraidas
 
+    def extrair_detalhes_vaga(self, url: str) -> str:
+        """Acessa a pagina individual da vaga e extrai a descricao completa.
+
+        ATENCAO: esqueleto propositadamente vazio. Implementar somente quando
+        o HTML da pagina de detalhes for fornecido (nao inventar seletores).
+        """
+        return ""
+
     def _extrair_vaga_do_card(self, card: Locator) -> Vaga:
         """Extrai os dados de um unico card (<li>) da listagem."""
         link = card.locator(self.SELETOR_LINK).first
