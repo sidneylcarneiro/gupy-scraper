@@ -1,20 +1,94 @@
-"""Testes unitarios do adaptador LLMAnalisador (resposta simulada, sem rede)."""
+"""Testes unitarios do LLMAnalisador (client OpenAI mockado, sem rede)."""
 
-from infrastructure.external_services.llm_analisador import LLMAnalisador
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from infrastructure.external_services.llm_analisador import BASE_URL_DEEPSEEK, LLMAnalisador
+
+MODULO = "infrastructure.external_services.llm_analisador.OpenAI"
 
 
-def test_deve_retornar_palavras_chave_simuladas():
-    analisador = LLMAnalisador(api_key="chave-teste")
+def _resposta_llm(conteudo: str) -> MagicMock:
+    resposta = MagicMock()
+    resposta.choices[0].message.content = conteudo
+    return resposta
 
-    resultado = analisador.extrair_palavras_chave("Descricao da vaga qualquer.")
 
-    assert resultado == ["Python", "FastAPI", "Clean Architecture"]
+def test_deve_extrair_palavras_chave_via_llm():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm('["Python", "Docker"]')
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.extrair_palavras_chave("Vaga com Python e Docker.")
+
+    assert resultado == ["Python", "Docker"]
+    mock_openai_cls.assert_called_once_with(api_key="chave-teste", base_url=BASE_URL_DEEPSEEK)
+
+    kwargs = cliente.chat.completions.create.call_args.kwargs
+    assert kwargs["model"] == "deepseek-chat"
+    assert kwargs["temperature"] == 0.1
+    assert kwargs["messages"][0]["role"] == "user"
+    assert "Vaga com Python e Docker." in kwargs["messages"][0]["content"]
+
+
+def test_deve_limpar_bloco_markdown_json_da_resposta():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm('```json\n["Python"]\n```')
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.extrair_palavras_chave("descricao")
+
+    assert resultado == ["Python"]
+
+
+def test_deve_limpar_bloco_markdown_simples_da_resposta():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.return_value = _resposta_llm('```\n["FastAPI"]\n```')
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.extrair_palavras_chave("descricao")
+
+    assert resultado == ["FastAPI"]
+
+
+def test_deve_retornar_lista_vazia_quando_llm_falha():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+        cliente.chat.completions.create.side_effect = RuntimeError("API fora do ar")
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.extrair_palavras_chave("descricao")
+
+    assert resultado == []
+
+
+def test_deve_retornar_vazio_sem_chamar_llm_para_descricao_vazia():
+    with patch(MODULO) as mock_openai_cls:
+        cliente = mock_openai_cls.return_value
+
+        analisador = LLMAnalisador(api_key="chave-teste")
+        resultado = analisador.extrair_palavras_chave("   \n\t")
+
+    assert resultado == []
+    cliente.chat.completions.create.assert_not_called()
+
+
+def test_deve_lancar_valueerror_quando_api_key_ausente(monkeypatch):
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+
+    with pytest.raises(ValueError, match="API Key do LLM"):
+        LLMAnalisador()
 
 
 def test_deve_ler_api_key_do_ambiente_quando_nao_informada(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "chave-do-env")
 
-    analisador = LLMAnalisador()
+    with patch(MODULO):
+        analisador = LLMAnalisador()
 
     assert analisador.api_key == "chave-do-env"
 
@@ -22,6 +96,7 @@ def test_deve_ler_api_key_do_ambiente_quando_nao_informada(monkeypatch):
 def test_deve_preferir_api_key_informada_no_construtor(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "chave-do-env")
 
-    analisador = LLMAnalisador(api_key="chave-explicita")
+    with patch(MODULO):
+        analisador = LLMAnalisador(api_key="chave-explicita")
 
     assert analisador.api_key == "chave-explicita"

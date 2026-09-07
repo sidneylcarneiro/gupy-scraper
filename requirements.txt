@@ -12,3 +12,6 @@ python-dotenv==1.*
 
 # Web scraping (Playwright) - Fase 3
 playwright==1.62.*
+
+# Motor de IA (DeepSeek, nativamente compatível com o SDK da OpenAI) - Fase 4
+openai==3.*

@@ -68,15 +68,15 @@ Este documento serve como guia de progresso. O agente de IA (Cline) deve consult
 
 ## 🟡 Fase 4: Inteligência Artificial (Em andamento)
 
-- [~] Integrar APIs de IA na camada de infraestrutura. *(Em andamento: port `IAnalisadorIA` + adaptador `LLMAnalisador` com resposta simulada criados e testados; chamada real ao provedor pendente da chave de API.)*
+- [~] Integrar APIs de IA na camada de infraestrutura. *(Concluído: adaptador real `LLMAnalisador` com DeepSeek (SDK OpenAI, `base_url=https://api.deepseek.com`). Aguarda apenas a inserção da `LLM_API_KEY` no `.env` para validação ponta a ponta.)*
 - [ ] Desenvolver os casos de uso de análise de perfil e mock interview. *(Primeiro entregue: `AnalisarAderenciaUseCase` — extração de palavras-chave da vaga.)*
 
 > **Nota da Fase 4 (progresso):**
 > - Port `IAnalisadorIA` (Protocol `@runtime_checkable`) em `application/interfaces/analisador_ia_port.py` com `extrair_palavras_chave(descricao_vaga: str) -> list[str]`.
-> - Adaptador `LLMAnalisador` em `infrastructure/external_services/llm_analisador.py`: retorna a lista simulada `["Python", "FastAPI", "Clean Architecture"]`, com `api_key` lida de `LLM_API_KEY` no `.env` (ou informada no construtor, que tem precedência) e campo `modelo` pronto para o provedor real (TODO documentado no código).
+> - Adaptador `LLMAnalisador` em `infrastructure/external_services/llm_analisador.py`: **DeepSeek via SDK da OpenAI** (`openai==3.*`, `base_url="https://api.deepseek.com"`, modelo `deepseek-chat`, `temperature=0.1`). Prompt solicita array JSON puro; limpeza de blocos markdown ` ```json `/` ``` ` antes do `json.loads`; `try/except` retorna `[]` em qualquer falha da API; retorna `[]` sem chamar a API para descrição vazia; `ValueError` quando `LLM_API_KEY` ausente.
 > - Caso de uso `AnalisarAderenciaUseCase` em `application/use_cases/analisar_aderencia_vaga.py`: recebe `IVagaRepository` + `IAnalisadorIA` no construtor; `executar(url_vaga)` busca a vaga no repositório e passa a `descricao` para a IA; levanta `VagaNaoEncontradaError` (sem acionar a IA) quando a URL não existe.
-> - `.env.example`: adicionada a variável `LLM_API_KEY`.
-> - TDD: 5 testes unitários novos com fakes — 2 do use case (fluxo feliz + vaga inexistente sem acionar a IA) e 3 do adaptador (mock, key do `.env`, key explícita). Verificação estrutural: `isinstance(LLMAnalisador(), IAnalisadorIA)` OK; ports `Protocol` agora são `@runtime_checkable` (inclui `IExtratorDeVagas`). Suíte: **16 passed**.
+> - TDD: **8 testes** do adaptador com `unittest.mock.patch` no client OpenAI (nada de rede): extração + kwargs da chamada (`model`, `temperature`, mensagens, base_url), limpeza de markdown `json`/simples, falha da API → `[]`, descrição vazia → `[]` sem chamar a API, `ValueError` sem key, key do `.env` e precedência da key explícita. 5 testes do use case com fakes. Suíte: **21 passed**.
+> - `scripts/test_deepseek.py`: validação real (repositório PostgreSQL → primeira vaga → `AnalisarAderenciaUseCase` → print título + palavras-chave). **Não executado**: aguarda `LLM_API_KEY` no `.env`.
 
 ## ⚪ Fase 5: Interface (FastAPI e HTMX)
 
