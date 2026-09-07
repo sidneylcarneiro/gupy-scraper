@@ -1,19 +1,37 @@
-"""Testes de integracao do PostgresVagaRepository contra o PostgreSQL real (Docker)."""
+"""Testes de integracao do PostgresVagaRepository contra o PostgreSQL real (Docker).
+
+Usam um banco DEDICADO a testes (gupy_scraper_test), derivado da DATABASE_URL,
+para nao apagar os dados do banco de desenvolvimento (gupy_scraper) ao rodar
+a suite pytest.
+"""
+
+import os
 
 import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from domain.entities.vaga import FormatoTrabalho, StatusVaga, Vaga
-from infrastructure.database.database import Base, SessionLocal, engine
+from infrastructure.database.database import Base
 from infrastructure.database.models import VagaModel  # noqa: F401 (registra as tabelas no Base)
 from infrastructure.database.postgres_vaga_repository import PostgresVagaRepository
+
+URL_BASE = os.getenv("DATABASE_URL", "postgresql://gupy:gupy@localhost:5434/gupy_scraper")
+TEST_DATABASE_URL = URL_BASE.rsplit("/", 1)[0] + "/gupy_scraper_test"
+
+engine_teste = create_engine(TEST_DATABASE_URL, pool_pre_ping=True)
+SessaoTeste = sessionmaker(
+    bind=engine_teste, autoflush=False, autocommit=False, expire_on_commit=False
+)
 
 
 @pytest.fixture
 def repositorio():
-    """Cria o schema no banco real antes de cada teste e o remove ao final."""
-    Base.metadata.create_all(bind=engine)
-    yield PostgresVagaRepository(session_factory=SessionLocal)
-    Base.metadata.drop_all(bind=engine)
+    """Cria o schema no banco de TESTES antes de cada teste e o remove ao final."""
+    Base.metadata.create_all(bind=engine_teste)
+    yield PostgresVagaRepository(session_factory=SessaoTeste)
+    Base.metadata.drop_all(bind=engine_teste)
+    engine_teste.dispose()
 
 
 @pytest.fixture
@@ -51,7 +69,7 @@ def test_deve_retornar_none_quando_url_nao_existe(repositorio):
 
 
 def _contar_vagas() -> int:
-    session = SessionLocal()
+    session = SessaoTeste()
     try:
         return session.query(VagaModel).count()
     finally:
