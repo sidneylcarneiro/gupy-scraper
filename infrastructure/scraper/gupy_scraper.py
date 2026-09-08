@@ -107,9 +107,15 @@ class GupyScraper:
 
         vagas_extraidas = []
         for card in cards:
-            vaga = self._extrair_vaga_do_card(card)
-            if self._dentro_do_prazo(vaga.data_publicacao):
-                vagas_extraidas.append(vaga)
+            try:
+                vaga = self._extrair_vaga_do_card(card)
+                if self._dentro_do_prazo(vaga.data_publicacao):
+                    vagas_extraidas.append(vaga)
+            except Exception as e:
+                # Un card malformado (p.ej. footer sin data que lanza timeout) no
+                # debe abortar la extraccion: se registra y se sigue con el resto.
+                print(f"Erro ao extrair card: {e}")
+                continue
         return vagas_extraidas
 
     @classmethod
@@ -160,25 +166,29 @@ class GupyScraper:
         return f"### {cabecalho}\n{conteudo.strip()}\n\n"
 
     def _extrair_vaga_do_card(self, card: Locator) -> Vaga:
-        """Extrai os dados de um unico card (<li>) da listagem."""
+        """Extrai os dados de um unico card (<li>) da listagem.
+
+        Usa text_content() (leitura instantanea do DOM, sem esperar animaciones)
+        para evitar timeouts desnecesarios.
+        """
         link = card.locator(self.SELETOR_LINK).first
         url = link.get_attribute("href") if link.count() > 0 else ""
 
         titulo_locator = card.locator(self.SELETOR_TITULO)
-        titulo = titulo_locator.inner_text(timeout=2000) if titulo_locator.count() > 0 else "Sem titulo"
+        titulo = titulo_locator.first.text_content() if titulo_locator.count() > 0 else ""
+        titulo = (titulo or "").strip() or "Sem titulo"
 
         empresa_locator = card.locator(self.SELETOR_EMPRESA).first
-        empresa = empresa_locator.inner_text(timeout=2000) if empresa_locator.count() > 0 else "Confidencial"
+        empresa = empresa_locator.text_content() if empresa_locator.count() > 0 else ""
+        empresa = (empresa or "").strip() or "Confidencial"
 
         localizacao_locator = card.locator(self.SELETOR_LOCALIZACAO)
         localizacao = (
-            localizacao_locator.inner_text(timeout=2000)
-            if localizacao_locator.count() > 0
-            else "Nao informado"
-        )
+            localizacao_locator.first.text_content() if localizacao_locator.count() > 0 else ""
+        ).strip() or "Nao informado"
 
-        footer_locator = card.locator(self.SELETOR_FOOTER)
-        footer_texto = footer_locator.inner_text(timeout=2000) if footer_locator.count() > 0 else ""
+        footer_locator = card.locator(self.SELETOR_FOOTER).first
+        footer_texto = footer_locator.text_content() if footer_locator.count() > 0 else ""
 
         return Vaga(
             titulo=titulo,
@@ -187,17 +197,23 @@ class GupyScraper:
             formato=FormatoTrabalho.REMOTO,
             descricao="",  # preenchida na orquestracao via extrair_detalhes_vaga
             url=url or "",
-            data_publicacao=self._extrair_data_publicacao(footer_texto),
+            data_publicacao=self._extrair_data_publicacao(footer_texto or ""),
             status=StatusVaga.NOVA,  # toda vaga raspada nasce no Inbox (triagem)
         )
 
     @staticmethod
     def _extrair_data_publicacao(footer_texto: str) -> Optional[datetime]:
-        """Extrai a data de publicacao de textos como 'Publicada em: 20/08/2026'."""
-        match = re.search(r"\d{2}/\d{2}/\d{4}", footer_texto)
+        """Extrae a data de publicacao de textos como 'Publicada em: 20/08/2026'.
+
+        Regex robusta con grupo de captura. Retorna None (vaga sin data)
+        quando nao encontra, mantendo o card pero deteniendo el scraper.
+        """
+        if not footer_texto:
+            return None
+        match = re.search(r"(\d{2}/\d{2}/\d{4})", footer_texto)
         if match is None:
             return None
         try:
-            return datetime.strptime(match.group(), "%d/%m/%Y")
+            return datetime.strptime(match.group(1), "%d/%m/%Y")
         except ValueError:
             return None

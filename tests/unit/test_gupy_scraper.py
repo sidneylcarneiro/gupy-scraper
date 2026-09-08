@@ -88,3 +88,35 @@ def test_extrair_vagas_deve_descartar_vagas_publicadas_ha_mais_de_30_dias(monkey
     resultado = scraper.extrair_vagas("https://portal.gupy.io/fake-search")
 
     assert resultado == [vaga_recente]  # vaga antiga filtrada pela regra de 30 dias
+
+
+def test_extrair_vagas_debe_ignorar_card_malformado_y_continuar_con_los_demas(monkeypatch):
+    """Un card cuyo footer lanza timeout (sin data) no debe abortar la extraccion."""
+    vaga_valida = Vaga(
+        titulo="Vaga valida",
+        empresa="Acme",
+        localizacao="Remoto",
+        formato=FormatoTrabalho.REMOTO,
+        descricao="desc",
+        url="https://acme.gupy.io/job/valida",
+        data_publicacao=datetime.now() - timedelta(days=2),
+        status=StatusVaga.NOVA,
+    )
+    scraper = GupyScraper()
+    page_fake = MagicMock()
+    card_malformado = MagicMock()
+    card_bueno = MagicMock()
+    page_fake.locator.return_value.all.return_value = [card_malformado, card_bueno]
+
+    def _extraer_por_card(card):
+        if card is card_malformado:
+            raise Exception("Locator.inner_text: Timeout 2000ms exceeded")
+        return vaga_valida
+
+    monkeypatch.setattr(scraper, "_page", page_fake)
+    monkeypatch.setattr(scraper, "acessar_pagina", lambda url: None)
+    monkeypatch.setattr(scraper, "_extrair_vaga_do_card", _extraer_por_card)
+
+    resultado = scraper.extrair_vagas("https://portal.gupy.io/fake-search")
+
+    assert [vaga.url for vaga in resultado] == ["https://acme.gupy.io/job/valida"]
