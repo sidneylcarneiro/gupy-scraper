@@ -32,7 +32,8 @@ class GupyScraper:
     SELETOR_TITULO_SECAO = "h2"
     SELETOR_CONTEUDO_SECAO = "div"
 
-    TIMEOUT_SELETOR_MS = 15000
+    TIMEOUT_SELETOR_MS = 30000
+    TENTATIVAS_SELETOR = 2
     TIMEOUT_NAVEGACAO_MS = 60000
     TENTATIVAS_NAVEGACAO = 2
 
@@ -89,10 +90,22 @@ class GupyScraper:
         raise ultimo_erro
 
     def acessar_pagina(self, url_busca: str) -> None:
-        """Navega ate a URL de busca informada e aguarda a lista de vagas carregar."""
+        """Navega ate a URL de busca informada e aguarda a lista de vagas carregar.
+
+        A listagem da Gupy pode demorar (rede lenta/SPA): o seletor e aguardado
+        com timeout generoso e ate TENTATIVAS_SELETOR tentativas.
+        """
         page = self._garantir_page()
         self._navegar(page, url_busca)
-        page.wait_for_selector(self.SELETOR_LISTA_VAGAS, timeout=self.TIMEOUT_SELETOR_MS)
+
+        ultimo_erro: Optional[Exception] = None
+        for _ in range(self.TENTATIVAS_SELETOR):
+            try:
+                page.wait_for_selector(self.SELETOR_LISTA_VAGAS, timeout=self.TIMEOUT_SELETOR_MS)
+                return
+            except Exception as erro:
+                ultimo_erro = erro
+        raise ultimo_erro
 
     DIAS_LIMITE_VAGA = 30
 
@@ -112,8 +125,8 @@ class GupyScraper:
                 if self._dentro_do_prazo(vaga.data_publicacao):
                     vagas_extraidas.append(vaga)
             except Exception as e:
-                # Un card malformado (p.ej. footer sin data que lanza timeout) no
-                # debe abortar la extraccion: se registra y se sigue con el resto.
+                # Um card malformado (ex.: footer sem data que lança timeout) não
+                # deve abortar a extração: é registrado e se continua com o resto.
                 print(f"Erro ao extrair card: {e}")
                 continue
         return vagas_extraidas
@@ -203,10 +216,10 @@ class GupyScraper:
 
     @staticmethod
     def _extrair_data_publicacao(footer_texto: str) -> Optional[datetime]:
-        """Extrae a data de publicacao de textos como 'Publicada em: 20/08/2026'.
+        """Extracts the publication date from texts like 'Publicada em: 20/08/2026'.
 
-        Regex robusta con grupo de captura. Retorna None (vaga sin data)
-        quando nao encontra, mantendo o card pero deteniendo el scraper.
+        Robust regex with a capture group. Returns None (a vagary without a date)
+        when not found, keeping the card without breaking the scraper.
         """
         if not footer_texto:
             return None

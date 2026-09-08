@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from application.services.orquestrador_scraper import OrquestradorScraper
+from application.use_cases.atualizar_busca import AtualizarBuscaUseCase, BuscaNaoEncontradaError
 from application.use_cases.atualizar_status_vaga import AtualizarStatusVagaUseCase
 from application.use_cases.buscar_vaga_por_id import (
     BuscarVagaPorIdUseCase,
@@ -152,6 +153,40 @@ def remover_busca(
     """Remove uma busca salva e devolve a lista atualizada."""
     repositorio.remover(id_busca)
     return _renderizar_lista(request, repositorio, mensagem="Busca removida.")
+
+
+@app.get("/buscas/{id_busca}/editar", response_class=HTMLResponse)
+def editar_busca_form(
+    request: Request,
+    id_busca: int,
+    repositorio: IBuscaRepository = Depends(get_busca_repository),
+):
+    """Returns the edit form for a search (HTMX fragment)."""
+    busca = repositorio.buscar_por_id(id_busca)
+    if busca is None:
+        return _renderizar_lista(request, repositorio, mensagem="Erro: busca nao encontrada.")
+    return templates.TemplateResponse(
+        request,
+        "partials/editar_busca.html",
+        {"busca": busca},
+    )
+
+
+@app.post("/buscas/{id_busca}/editar", response_class=HTMLResponse)
+def editar_busca(
+    request: Request,
+    id_busca: int,
+    apelido: str = Form(""),
+    url: str = Form(""),
+    repositorio: IBuscaRepository = Depends(get_busca_repository),
+):
+    """Edits a saved search and returns the updated list."""
+    use_case = AtualizarBuscaUseCase(repositorio)
+    try:
+        use_case.executar(id_busca=id_busca, apelido=apelido, url=url)
+        return _renderizar_lista(request, repositorio, mensagem=f"Busca editada com sucesso!")
+    except (ApelidoInvalidoError, URLInvalidaError, BuscaNaoEncontradaError) as erro:
+        return _renderizar_lista(request, repositorio, mensagem=f"Erro: {erro}")
 
 
 @app.post("/buscas/{id_busca}/executar", response_class=HTMLResponse)

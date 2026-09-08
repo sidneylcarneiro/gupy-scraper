@@ -28,6 +28,14 @@ class RepositorioBuscaFake:
     def remover(self, id_busca):
         self.salvas.pop(id_busca, None)
 
+    def atualizar(self, id_busca, apelido, url):
+        busca = self.salvas.get(id_busca)
+        if busca is None:
+            return None
+        busca.apelido = apelido
+        busca.url = url
+        return busca
+
 
 repositorio_fake = RepositorioBuscaFake()
 
@@ -201,8 +209,9 @@ def test_menu_nao_deve_mais_conter_o_inbox():
 
 def test_configuracoes_deve_exibir_formulario_e_buscas_salvas():
     repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
     repositorio_fake.salvar(
-        type("BuscaFake", (), {"apelido": "Dados SP", "url": "https://portal.gupy.io/job-search/term=dados", "id": 2})()
+        type("BuscaFake", (), {"apelido": "Dados SP", "url": "https://portal.gupy.io/job-search/term=dados", "id": None})()
     )
 
     resposta = cliente.get("/configuracoes")
@@ -211,6 +220,52 @@ def test_configuracoes_deve_exibir_formulario_e_buscas_salvas():
     assert "Nova busca" in resposta.text
     assert 'hx-post="/buscas"' in resposta.text
     assert "Dados SP" in resposta.text
+
+
+def test_busca_en_configuracoes_no_deve_ter_boton_executar():
+    repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
+    repositorio_fake.salvar(
+        type("BuscaFake", (), {"apelido": "Dados", "url": "https://portal.gupy.io/job-search/term=dados", "id": None})()
+    )
+
+    resposta = cliente.get("/configuracoes")
+
+    assert resposta.status_code == 200
+    assert "/buscas/1/executar" not in resposta.text
+    assert "✏️ Editar" in resposta.text
+    assert "🗑️ Remover" in resposta.text
+
+
+def test_formulario_edicion_deve_devolver_campos_precargados():
+    repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
+    repositorio_fake.salvar(
+        type("BuscaFake", (), {"apelido": "Viejo", "url": "https://portal.gupy.io/job-search/term=v", "id": None})()
+    )
+
+    resposta = cliente.get("/buscas/1/editar")
+
+    assert resposta.status_code == 200
+    assert "Viejo" in resposta.text
+    assert 'value="https://portal.gupy.io/job-search/term=v"' in resposta.text
+
+
+def test_deve_editar_busca_via_painel():
+    repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
+    repositorio_fake.salvar(
+        type("BuscaFake", (), {"apelido": "Viejo", "url": "https://portal.gupy.io/job-search/term=v", "id": None})()
+    )
+
+    resposta = cliente.post(
+        "/buscas/1/editar",
+        data={"apelido": "Python Remoto", "url": "https://portal.gupy.io/job-search/term=python"},
+    )
+
+    assert resposta.status_code == 200
+    assert "Busca editada com sucesso" in resposta.text
+    assert repositorio_fake.salvas[1].apelido == "Python Remoto"
 
 
 class OrquestradorFake:

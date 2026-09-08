@@ -1,0 +1,12 @@
+<tr>
+    <td colspan="3">
+        <form hx-post="/buscas/{{ busca.id }}/editar" hx-target="#lista-buscas" hx-swap="innerHTML">
+            <label for="apelido">Apelido da busca</label>
+            <input id="apelido" name="apelido" value="{{ busca.apelido }}" required>
+            <label for="url">URL de busca da Gupy</label>
+            <input id="url" name="url" value="{{ busca.url }}" required>
+            <button type="submit">💾 Salvar</button>
+            <button type="button" hx-get="/configuracoes" hx-target="#lista-buscas" hx-swap="innerHTML">✖ Cancelar</button>
+        </form>
+    </td>
+</tr>

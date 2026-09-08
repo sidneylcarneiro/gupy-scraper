@@ -38,6 +38,41 @@ def test_extrair_detalhes_vaga_deve_retornar_vazio_quando_navegacao_falha(monkey
     assert scraper.extrair_detalhes_vaga("https://empresa.gupy.io/job/x") == ""
 
 
+def test_acessar_pagina_deve_tentar_novamente_antes_de_falhar(monkeypatch):
+    """A listagem da Gupy pode demorar: o seletor deve ser re-tentado."""
+    scraper = GupyScraper()
+    page_fake = MagicMock()
+    tentativas = {"count": 0}
+
+    def _wait_seletor(seletor, timeout):
+        tentativas["count"] += 1
+        if tentativas["count"] == 1:
+            raise Exception("Timeout na primeira tentativa")
+
+    page_fake.wait_for_selector.side_effect = _wait_seletor
+    monkeypatch.setattr(scraper, "_page", page_fake)
+    monkeypatch.setattr(scraper, "_garantir_page", lambda: page_fake)
+    monkeypatch.setattr(scraper, "_navegar", lambda page, url: None)
+
+    scraper.acessar_pagina("https://portal.gupy.io/fake-search")
+
+    assert tentativas["count"] == 2  # falhou 1x, sucesso na 2a
+
+
+def test_acessar_pagina_deve_lancar_erro_apos_esgotar_tentativas(monkeypatch):
+    scraper = GupyScraper()
+    page_fake = MagicMock()
+    page_fake.wait_for_selector.side_effect = Exception("sempre falha")
+    monkeypatch.setattr(scraper, "_page", page_fake)
+    monkeypatch.setattr(scraper, "_garantir_page", lambda: page_fake)
+    monkeypatch.setattr(scraper, "_navegar", lambda page, url: None)
+
+    with pytest.raises(Exception, match="sempre falha"):
+        scraper.acessar_pagina("https://portal.gupy.io/fake-search")
+
+    assert page_fake.wait_for_selector.call_count == GupyScraper.TENTATIVAS_SELETOR
+
+
 def test_dentro_do_prazo_deve_aceitar_vaga_publicada_ha_poucos_dias():
     agora = datetime(2026, 9, 8, 12, 0, 0)
 
@@ -90,8 +125,8 @@ def test_extrair_vagas_deve_descartar_vagas_publicadas_ha_mais_de_30_dias(monkey
     assert resultado == [vaga_recente]  # vaga antiga filtrada pela regra de 30 dias
 
 
-def test_extrair_vagas_debe_ignorar_card_malformado_y_continuar_con_los_demas(monkeypatch):
-    """Un card cuyo footer lanza timeout (sin data) no debe abortar la extraccion."""
+def test_extrair_vagas_deve_ignorar_card_malformado_e_continuar_com_os_demais(monkeypatch):
+    """Um card cujo footer lança timeout (sem data) não deve abortar a extração."""
     vaga_valida = Vaga(
         titulo="Vaga valida",
         empresa="Acme",
@@ -104,18 +139,18 @@ def test_extrair_vagas_debe_ignorar_card_malformado_y_continuar_con_los_demas(mo
     )
     scraper = GupyScraper()
     page_fake = MagicMock()
-    card_malformado = MagicMock()
-    card_bueno = MagicMock()
-    page_fake.locator.return_value.all.return_value = [card_malformado, card_bueno]
+    malformed_card = MagicMock()
+    good_card = MagicMock()
+    page_fake.locator.return_value.all.return_value = [malformed_card, good_card]
 
-    def _extraer_por_card(card):
-        if card is card_malformado:
+    def _extract_per_card(card):
+        if card is malformed_card:
             raise Exception("Locator.inner_text: Timeout 2000ms exceeded")
         return vaga_valida
 
     monkeypatch.setattr(scraper, "_page", page_fake)
     monkeypatch.setattr(scraper, "acessar_pagina", lambda url: None)
-    monkeypatch.setattr(scraper, "_extrair_vaga_do_card", _extraer_por_card)
+    monkeypatch.setattr(scraper, "_extrair_vaga_do_card", _extract_per_card)
 
     resultado = scraper.extrair_vagas("https://portal.gupy.io/fake-search")
 

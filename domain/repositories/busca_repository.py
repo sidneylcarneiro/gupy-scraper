@@ -28,3 +28,8 @@ class IBuscaRepository(ABC):
     def remover(self, id_busca: int) -> None:
         """Remove a busca pelo id."""
         pass
+
+    @abstractmethod
+    def atualizar(self, id_busca: int, apelido: str, url: str) -> Optional[Busca]:
+        """Updates the alias and URL of a search by id. Returns None if not found."""
+        pass

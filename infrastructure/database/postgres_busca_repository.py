@@ -62,6 +62,23 @@ class PostgresBuscaRepository(IBuscaRepository):
         finally:
             session.close()
 
+    def atualizar(self, id_busca: int, apelido: str, url: str) -> Optional[Busca]:
+        """Updates the alias and URL of a search by id; None if not found."""
+        session = self._session_factory()
+        try:
+            modelo = session.get(BuscaModel, id_busca)
+            if modelo is None:
+                return None
+            modelo.apelido = apelido
+            modelo.url = url
+            session.commit()
+            return self._para_entidade(modelo)
+        except IntegrityError as erro:
+            session.rollback()
+            raise ApelidoJaExisteError(f"Ja existe uma busca com o apelido '{apelido}'.") from erro
+        finally:
+            session.close()
+
     @staticmethod
     def _para_entidade(modelo: BuscaModel) -> Busca:
         return Busca(id=modelo.id, apelido=modelo.apelido, url=modelo.url)

@@ -21,14 +21,25 @@ class CadastrarBuscaUseCase:
         self._repositorio = repositorio
 
     def executar(self, apelido: str, url: str) -> Busca:
-        """Valida os dados e salva a busca no repositorio."""
-        apelido_normalizado = (apelido or "").strip()
-        if not apelido_normalizado:
-            raise ApelidoInvalidoError("O apelido da busca e obrigatorio.")
-
-        url_normalizada = (url or "").strip()
-        if not url_normalizada.startswith(PREFIXO_URL_GUPY):
-            raise URLInvalidaError("A URL deve pertencer ao portal da Gupy (https://portal.gupy.io/).")
+        """Validates and persists a named search."""
+        apelido_normalizado, url_normalizada = normalizar_y_validar(apelido, url)
 
         busca = Busca(apelido=apelido_normalizado, url=url_normalizada)
         return self._repositorio.salvar(busca)
+
+
+def normalizar_y_validar(apelido: str, url: str) -> tuple[str, str]:
+    """Validates and normalizes alias/URL, shared by creation and edition.
+
+    Raises ApelidoInvalidoError or URLInvalidaError; returns the normalized
+    (stripped) values when valid.
+    """
+    apelido_normalizado = (apelido or "").strip()
+    if not apelido_normalizado:
+        raise ApelidoInvalidoError("O apelido da busca e obrigatorio.")
+
+    url_normalizada = (url or "").strip()
+    if not url_normalizada.startswith(PREFIXO_URL_GUPY):
+        raise URLInvalidaError("A URL deve pertencer ao portal da Gupy (https://portal.gupy.io/).")
+
+    return apelido_normalizado, url_normalizada

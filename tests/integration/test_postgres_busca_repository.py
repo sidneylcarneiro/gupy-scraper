@@ -47,3 +47,20 @@ def test_deve_buscar_por_id_e_remover(repositorio):
 
     repositorio.remover(busca.id)
     assert repositorio.buscar_por_id(busca.id) is None
+
+
+def test_deve_editar_apelido_e_url_de_busca(repositorio):
+    busca = repositorio.salvar(Busca(apelido="Viejo", url="https://portal.gupy.io/job-search/term=v"))
+
+    atualizada = repositorio.atualizar(
+        busca.id, apelido="Python Remoto", url="https://portal.gupy.io/job-search/term=python"
+    )
+
+    assert atualizada is not None
+    assert atualizada.apelido == "Python Remoto"
+    assert atualizada.url == "https://portal.gupy.io/job-search/term=python"
+    assert repositorio.buscar_por_id(busca.id).apelido == "Python Remoto"
+
+
+def test_deve_retornar_none_ao_editar_busca_inexistente(repositorio):
+    assert repositorio.atualizar(9999, apelido="X", url="https://portal.gupy.io/job-search/term=x") is None
