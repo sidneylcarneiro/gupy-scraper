@@ -53,12 +53,27 @@
                 animation: 150,
                 onEnd: function (evento) {
                     var card = evento.item;
-                    var novoStatus = evento.to.closest('.coluna').dataset.status;
+                    var colunaOrigem = evento.from.closest('.coluna');
+                    var colunaDestino = evento.to.closest('.coluna');
+                    var novoStatus = colunaDestino.dataset.status;
+
+                    // Atualiza o backend silenciosamente via HTMX
                     htmx.ajax('PATCH', '/vagas/' + card.dataset.id + '/status', {
                         values: { status: novoStatus },
                         target: '#' + card.id,
                         swap: 'outerHTML',
                     });
+
+                    // Atualiza as contagens visuais no front-end
+                    if (colunaOrigem !== colunaDestino) {
+                        var spanOrigem = colunaOrigem.querySelector('h2 span');
+                        var countOrigem = colunaOrigem.querySelectorAll('.card-vaga').length;
+                        if (spanOrigem) spanOrigem.innerText = '(' + countOrigem + ')';
+
+                        var spanDestino = colunaDestino.querySelector('h2 span');
+                        var countDestino = colunaDestino.querySelectorAll('.card-vaga').length;
+                        if (spanDestino) spanDestino.innerText = '(' + countDestino + ')';
+                    }
                 },
             });
         });
