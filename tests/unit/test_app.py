@@ -309,3 +309,34 @@ def test_detalhes_de_vaga_inexistente_deve_retornar_404():
     resposta = cliente.get("/vagas/999")
 
     assert resposta.status_code == 404
+
+
+def test_limpar_kanban_deve_descartar_vagas_e_devolver_hx_refresh():
+    repositorio_vagas_fake.vagas = {
+        1: _vaga_fake(1, StatusVaga.ATIVA),
+        2: _vaga_fake(2, StatusVaga.CANDIDATURA_ENVIADA),
+        3: _vaga_fake(3, StatusVaga.NOVA),
+    }
+
+    resposta = cliente.post("/kanban/limpar")
+
+    assert resposta.status_code == 200
+    assert resposta.headers.get("HX-Refresh") == "true"
+    assert "2 vaga(s) descartada(s)" in resposta.text
+    assert repositorio_vagas_fake.vagas[1].status == StatusVaga.DESCARTADA
+    assert repositorio_vagas_fake.vagas[2].status == StatusVaga.DESCARTADA
+    assert repositorio_vagas_fake.vagas[3].status == StatusVaga.NOVA  # triagem preservada
+
+
+def test_kanban_deve_exibir_acoes_nos_cards():
+    repositorio_vagas_fake.vagas = {1: _vaga_fake(1, StatusVaga.ATIVA)}
+
+    resposta = cliente.get("/kanban")
+
+    assert resposta.status_code == 200
+    assert 'href="/vagas/1"' in resposta.text
+    assert "↩️ Voltar p/ Busca" in resposta.text
+    assert 'hx-vals=\'{"status": "Nova"}\'' in resposta.text
+    assert "🗑️ Descartar" in resposta.text
+    assert "🧹 Limpar Painel" in resposta.text
+    assert 'hx-post="/kanban/limpar"' in resposta.text

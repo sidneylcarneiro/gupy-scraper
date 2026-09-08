@@ -22,6 +22,10 @@
         .card-vaga strong { display: block; font-size: .88rem; line-height: 1.25; }
         .card-vaga .empresa { color: #2563eb; font-size: .8rem; font-weight: 600; }
         .card-vaga .meta { color: #6b7280; font-size: .75rem; margin-top: .25rem; }
+        .card-vaga .acoes { display: flex; gap: .35rem; margin-top: .5rem; }
+        .card-vaga .acoes a, .card-vaga .acoes button { background: #2563eb; color: #fff; border: 0; border-radius: 5px; padding: .25rem .5rem; font-size: .72rem; cursor: pointer; text-decoration: none; display: inline-block; }
+        .card-vaga .acoes button.cinza { background: #6b7280; }
+        .card-vaga .acoes button.perigo { background: #dc2626; }
         .vazia { color: #9ca3af; font-size: .8rem; font-style: italic; }
     </style>
 </head>
@@ -32,7 +36,11 @@
         <a href="/configuracoes">⚙️ Configurações</a>
     </nav>
     <h1>🗂️ Kanban de Vagas</h1>
-    <p class="sub">Arraste os cards entre as colunas para mover a vaga no funil — o status é salvo automaticamente no PostgreSQL. Total: {{ total_vagas }} vaga(s).</p>
+    <p class="sub">Arraste os cards entre as colunas para mover a vaga no funil — o status é salvo automaticamente no PostgreSQL. Total: {{ total_vagas }} vaga(s).
+        <form style="display:inline" hx-post="/kanban/limpar" hx-confirm="Tem certeza que deseja limpar todo o painel? As vagas serão descartadas.">
+            <button class="perigo" style="margin:0 0 0 .6rem; padding:.25rem .6rem; font-size:.8rem">🧹 Limpar Painel</button>
+        </form>
+    </p>
 
     <div class="kanban">
         {% for status, vagas in vagas_por_status.items() %}

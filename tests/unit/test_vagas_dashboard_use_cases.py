@@ -4,6 +4,7 @@ import pytest
 
 from application.use_cases.atualizar_status_vaga import AtualizarStatusVagaUseCase
 from application.use_cases.buscar_vaga_por_id import BuscarVagaPorIdUseCase, VagaNaoEncontradaError
+from application.use_cases.limpar_kanban import LimparKanbanUseCase
 from application.use_cases.listar_vagas import ListarVagasUseCase
 from domain.entities.vaga import FormatoTrabalho, StatusVaga, Vaga
 
@@ -89,3 +90,32 @@ def test_buscar_vaga_por_id_deve_levantar_erro_para_vaga_inexistente():
 
     with pytest.raises(VagaNaoEncontradaError):
         use_case.executar(999)
+
+
+def test_limpar_kanban_deve_descartar_apenas_vagas_em_processo():
+    repositorio = RepositorioVagaFake(
+        [
+            _vaga(1, StatusVaga.ATIVA),
+            _vaga(2, StatusVaga.CANDIDATURA_ENVIADA),
+            _vaga(3, StatusVaga.EM_ANDAMENTO),
+            _vaga(4, StatusVaga.REJEITADA),
+            _vaga(5, StatusVaga.CONTRATADA),
+            _vaga(6, StatusVaga.NOVA),
+            _vaga(7, StatusVaga.DESCARTADA),
+        ]
+    )
+    use_case = LimparKanbanUseCase(repositorio)
+
+    quantidade = use_case.executar()
+
+    assert quantidade == 5  # NOVA (6) e DESCARTADA (7) nao sao tocadas
+    assert repositorio.vagas[6].status == StatusVaga.NOVA
+    assert repositorio.vagas[7].status == StatusVaga.DESCARTADA
+    for id_vaga in (1, 2, 3, 4, 5):
+        assert repositorio.vagas[id_vaga].status == StatusVaga.DESCARTADA
+
+
+def test_limpar_kanban_vazio_deve_retornar_zero():
+    use_case = LimparKanbanUseCase(RepositorioVagaFake([]))
+
+    assert use_case.executar() == 0

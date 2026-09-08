@@ -19,6 +19,7 @@ from application.use_cases.cadastrar_busca import (
     CadastrarBuscaUseCase,
     URLInvalidaError,
 )
+from application.use_cases.limpar_kanban import LimparKanbanUseCase
 from application.use_cases.listar_vagas import ListarVagasUseCase
 from application.use_cases.salvar_vaga import SalvarVagaUseCase
 from domain.entities.vaga import StatusVaga, Vaga
@@ -218,6 +219,16 @@ def detalhes_vaga(
         "vaga_detalhes.html",
         {"vaga": vaga},
         headers=CABECALHOS_SEM_CACHE,
+    )
+
+
+@app.post("/kanban/limpar", response_class=HTMLResponse)
+def limpar_kanban(repositorio_vagas: IVagaRepository = Depends(get_vaga_repository)):
+    """Descarta todas as vagas em processo e pede o refresh do HTMX."""
+    quantidade = LimparKanbanUseCase(repositorio_vagas).executar()
+    return HTMLResponse(
+        f"<div class='mensagem'>{quantidade} vaga(s) descartada(s). Painel limpo!</div>",
+        headers={"HX-Refresh": "true"},
     )
 
 

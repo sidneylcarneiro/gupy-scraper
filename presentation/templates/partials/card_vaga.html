@@ -2,4 +2,18 @@
     <span class="empresa">{{ vaga.empresa }}</span>
     <strong>{{ vaga.titulo }}</strong>
     <div class="meta">{{ vaga.localizacao }} · {{ vaga.formato.value }} · {{ vaga.status.value }}</div>
+    <div class="acoes">
+        <a href="/vagas/{{ vaga.id }}" title="Ver detalhes da vaga">👁 Visualizar</a>
+        <button class="cinza"
+                hx-patch="/vagas/{{ vaga.id }}/status"
+                hx-vals='{"status": "Nova"}'
+                hx-swap="delete"
+                title="Devolve a vaga para a triagem">↩️ Voltar p/ Busca</button>
+        <button class="perigo"
+                hx-patch="/vagas/{{ vaga.id }}/status"
+                hx-vals='{"status": "Descartada"}'
+                hx-confirm="Tem certeza?"
+                hx-swap="delete"
+                title="Marca a vaga como Descartada">🗑️ Descartar</button>
+    </div>
 </div>
