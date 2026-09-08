@@ -26,3 +26,8 @@ class IVagaRepository(ABC):
     def atualizar_status(self, id_vaga: int, status: StatusVaga) -> Optional[Vaga]:
         """Atualiza o status da vaga pelo id. Retorna None quando não encontrada."""
         pass
+
+    @abstractmethod
+    def buscar_por_id(self, id_vaga: int) -> Optional[Vaga]:
+        """Busca uma vaga pelo id. Retorna None quando não encontrada."""
+        pass

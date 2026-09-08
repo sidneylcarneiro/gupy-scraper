@@ -2,10 +2,8 @@
 
 import pytest
 
-from application.use_cases.atualizar_status_vaga import (
-    AtualizarStatusVagaUseCase,
-    VagaNaoEncontradaError,
-)
+from application.use_cases.atualizar_status_vaga import AtualizarStatusVagaUseCase
+from application.use_cases.buscar_vaga_por_id import BuscarVagaPorIdUseCase, VagaNaoEncontradaError
 from application.use_cases.listar_vagas import ListarVagasUseCase
 from domain.entities.vaga import FormatoTrabalho, StatusVaga, Vaga
 
@@ -24,6 +22,9 @@ class RepositorioVagaFake:
 
     def listar_todas(self):
         return list(self.vagas.values())
+
+    def buscar_por_id(self, id_vaga):
+        return self.vagas.get(id_vaga)
 
     def atualizar_status(self, id_vaga, status):
         vaga = self.vagas.get(id_vaga)
@@ -71,3 +72,20 @@ def test_atualizar_status_deve_levantar_erro_para_vaga_inexistente():
 
     with pytest.raises(VagaNaoEncontradaError):
         use_case.executar(999, StatusVaga.CONTRATADA)
+
+
+def test_buscar_vaga_por_id_deve_retornar_vaga_existente():
+    repositorio = RepositorioVagaFake([_vaga(3, StatusVaga.NOVA)])
+    use_case = BuscarVagaPorIdUseCase(repositorio)
+
+    vaga = use_case.executar(3)
+
+    assert vaga.id == 3
+    assert vaga.status == StatusVaga.NOVA
+
+
+def test_buscar_vaga_por_id_deve_levantar_erro_para_vaga_inexistente():
+    use_case = BuscarVagaPorIdUseCase(RepositorioVagaFake([]))
+
+    with pytest.raises(VagaNaoEncontradaError):
+        use_case.executar(999)

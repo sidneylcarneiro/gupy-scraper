@@ -114,3 +114,12 @@ class PostgresVagaRepository(IVagaRepository):
             raise
         finally:
             session.close()
+
+    def buscar_por_id(self, id_vaga: int) -> Optional[Vaga]:
+        """Busca a vaga pelo id; retorna None quando nao encontrada."""
+        session: Session = self._session_factory()
+        try:
+            modelo = session.get(VagaModel, id_vaga)
+            return _para_entidade(modelo) if modelo is not None else None
+        finally:
+            session.close()

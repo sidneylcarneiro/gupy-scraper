@@ -132,6 +132,20 @@ def test_deve_retornar_none_ao_atualizar_status_de_vaga_inexistente(repositorio)
     assert repositorio.atualizar_status(9999, StatusVaga.REJEITADA) is None
 
 
+def test_deve_buscar_vaga_por_id(repositorio, vaga_exemplo):
+    repositorio.salvar(vaga_exemplo)
+    vaga_salva = repositorio.buscar_por_url(vaga_exemplo.url)
+
+    encontrada = repositorio.buscar_por_id(vaga_salva.id)
+
+    assert encontrada is not None
+    assert encontrada.url == vaga_exemplo.url
+
+
+def test_deve_retornar_none_ao_buscar_por_id_inexistente(repositorio):
+    assert repositorio.buscar_por_id(9999) is None
+
+
 def test_salvar_nao_deve_sobrescrever_status_de_vaga_existente(repositorio, vaga_exemplo):
     """O status definido pelo usuario no Kanban deve sobreviver ao re-scraping."""
     repositorio.salvar(vaga_exemplo)

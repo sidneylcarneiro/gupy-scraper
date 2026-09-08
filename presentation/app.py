@@ -10,6 +10,10 @@ from fastapi.templating import Jinja2Templates
 
 from application.services.orquestrador_scraper import OrquestradorScraper
 from application.use_cases.atualizar_status_vaga import AtualizarStatusVagaUseCase
+from application.use_cases.buscar_vaga_por_id import (
+    BuscarVagaPorIdUseCase,
+    VagaNaoEncontradaError,
+)
 from application.use_cases.cadastrar_busca import (
     ApelidoInvalidoError,
     CadastrarBuscaUseCase,
@@ -123,19 +127,64 @@ def executar_busca(
         return _renderizar_lista(request, repositorio, mensagem=f"Erro ao executar a busca: {erro}")
 
 
+STATUS_FORA_DO_KANBAN = (StatusVaga.NOVA, StatusVaga.DESCARTADA)
+
+
 @app.get("/kanban", response_class=HTMLResponse)
 def kanban(request: Request, repositorio_vagas: IVagaRepository = Depends(get_vaga_repository)):
-    """Dashboard Kanban com as vagas agrupadas por status do funil."""
+    """Dashboard Kanban com as vagas em processo, agrupadas por status.
+
+    Vagas NOVA (aguardando triagem no Inbox) e DESCARTADA nao aparecem aqui.
+    """
     vagas = ListarVagasUseCase(repositorio_vagas).executar()
-    vagas_por_status = {status: [] for status in StatusVaga}
-    for vaga in vagas:
+    vagas_em_processo = [vaga for vaga in vagas if vaga.status not in STATUS_FORA_DO_KANBAN]
+    vagas_por_status = {status: [] for status in StatusVaga if status not in STATUS_FORA_DO_KANBAN}
+    for vaga in vagas_em_processo:
         vagas_por_status[vaga.status].append(vaga)
     return templates.TemplateResponse(
         request,
         "kanban.html",
-        {"vagas_por_status": vagas_por_status, "total_vagas": len(vagas)},
+        {"vagas_por_status": vagas_por_status, "total_vagas": len(vagas_em_processo)},
         headers=CABECALHOS_SEM_CACHE,
     )
+
+
+@app.get("/inbox", response_class=HTMLResponse)
+def inbox(request: Request, repositorio_vagas: IVagaRepository = Depends(get_vaga_repository)):
+    """Caixa de entrada: vagas recem-extraidas (NOVA) aguardando triagem."""
+    vagas = ListarVagasUseCase(repositorio_vagas).executar()
+    novas = [vaga for vaga in vagas if vaga.status == StatusVaga.NOVA]
+    return templates.TemplateResponse(
+        request,
+        "inbox.html",
+        {"vagas_novas": novas},
+        headers=CABECALHOS_SEM_CACHE,
+    )
+
+
+@app.get("/vagas/{id_vaga}", response_class=HTMLResponse)
+def detalhes_vaga(
+    request: Request,
+    id_vaga: int,
+    repositorio_vagas: IVagaRepository = Depends(get_vaga_repository),
+):
+    """Pagina dedicada com os detalhes da vaga (e espaco para as analises de IA)."""
+    try:
+        vaga = BuscarVagaPorIdUseCase(repositorio_vagas).executar(id_vaga)
+    except VagaNaoEncontradaError:
+        return HTMLResponse("<h1>Vaga nao encontrada</h1>", status_code=404)
+    return templates.TemplateResponse(
+        request,
+        "vaga_detalhes.html",
+        {"vaga": vaga},
+        headers=CABECALHOS_SEM_CACHE,
+    )
+
+
+@app.get("/configuracoes", response_class=HTMLResponse)
+def configuracoes(request: Request):
+    """Pagina de configuracoes (placeholder — sera implementada em breve)."""
+    return templates.TemplateResponse(request, "configuracoes.html", {})
 
 
 @app.patch("/vagas/{id_vaga}/status", response_class=HTMLResponse)

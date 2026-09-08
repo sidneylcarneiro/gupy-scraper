@@ -165,7 +165,7 @@ class GupyScraper:
             descricao="",  # preenchida na orquestracao via extrair_detalhes_vaga
             url=url or "",
             data_publicacao=self._extrair_data_publicacao(footer_texto),
-            status=StatusVaga.ATIVA,
+            status=StatusVaga.NOVA,  # toda vaga raspada nasce no Inbox (triagem)
         )
 
     @staticmethod

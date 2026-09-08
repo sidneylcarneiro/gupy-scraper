@@ -18,13 +18,19 @@ class FormatoTrabalho(Enum):
 
 
 class StatusVaga(Enum):
-    """Status do ciclo de vida de uma vaga no funil de candidaturas."""
+    """Status do ciclo de vida de uma vaga no funil de candidaturas.
 
+    NOVA: recem-extraida pelo scraper, aguardando triagem no Inbox.
+    ATIVA: triada pelo usuario e em acompanhamento no Kanban.
+    """
+
+    NOVA = "Nova"
     ATIVA = "Ativa"
     CANDIDATURA_ENVIADA = "Candidatura Enviada"
     EM_ANDAMENTO = "Em andamento"
     REJEITADA = "Rejeitada"
     CONTRATADA = "Contratada"
+    DESCARTADA = "Descartada"
 
 
 @dataclass

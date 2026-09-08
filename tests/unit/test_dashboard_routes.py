@@ -100,6 +100,9 @@ class RepositorioVagaFake:
     def listar_todas(self):
         return list(self.vagas.values())
 
+    def buscar_por_id(self, id_vaga):
+        return self.vagas.get(id_vaga)
+
     def atualizar_status(self, id_vaga, status):
         vaga = self.vagas.get(id_vaga)
         if vaga is None:
@@ -167,3 +170,58 @@ def test_patch_status_deve_rejeitar_status_invalido():
     assert resposta.status_code == 200
     assert "Status invalido" in resposta.text
     assert repositorio_vagas_fake.vagas[1].status == StatusVaga.ATIVA  # inalterado
+
+
+def test_inbox_deve_exibir_apenas_vagas_com_status_nova():
+    repositorio_vagas_fake.vagas = {
+        1: _vaga_fake(1, StatusVaga.NOVA),
+        2: _vaga_fake(2, StatusVaga.ATIVA),
+        3: _vaga_fake(3, StatusVaga.DESCARTADA),
+    }
+
+    resposta = cliente.get("/inbox")
+
+    assert resposta.status_code == 200
+    assert "Inbox" in resposta.text
+    assert "Dev 1" in resposta.text
+    assert "Dev 2" not in resposta.text
+    assert "Dev 3" not in resposta.text
+    assert "Adicionar ao Kanban" in resposta.text
+    assert "Descartar" in resposta.text
+
+
+def test_kanban_nao_deve_exibir_vagas_nova_nem_descartada():
+    repositorio_vagas_fake.vagas = {
+        1: _vaga_fake(1, StatusVaga.NOVA),
+        2: _vaga_fake(2, StatusVaga.ATIVA),
+        3: _vaga_fake(3, StatusVaga.DESCARTADA),
+    }
+
+    resposta = cliente.get("/kanban")
+
+    assert resposta.status_code == 200
+    assert "Dev 2" in resposta.text
+    assert "Dev 1" not in resposta.text
+    assert "Dev 3" not in resposta.text
+    assert 'data-status="Nova"' not in resposta.text
+    assert 'data-status="Descartada"' not in resposta.text
+
+
+def test_detalhes_deve_exibir_dados_da_vaga():
+    repositorio_vagas_fake.vagas = {1: _vaga_fake(1, StatusVaga.NOVA)}
+
+    resposta = cliente.get("/vagas/1")
+
+    assert resposta.status_code == 200
+    assert "Dev 1" in resposta.text
+    assert "Acme" in resposta.text
+    assert "https://acme.gupy.io/job/1" in resposta.text
+    assert 'target="_blank"' in resposta.text
+    assert "Análise de Perfil" in resposta.text
+    assert "Mock Interview" in resposta.text
+
+
+def test_detalhes_de_vaga_inexistente_deve_retornar_404():
+    resposta = cliente.get("/vagas/999")
+
+    assert resposta.status_code == 404

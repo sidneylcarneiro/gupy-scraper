@@ -27,6 +27,12 @@ class RepositorioVagasEmMemoria(IVagaRepository):
     def listar_todas(self) -> list[Vaga]:
         return list(self.vagas_salvas)
 
+    def buscar_por_id(self, id_vaga: int) -> Optional[Vaga]:
+        for vaga in self.vagas_salvas:
+            if vaga.id == id_vaga:
+                return vaga
+        return None
+
     def atualizar_status(self, id_vaga: int, status: StatusVaga) -> Optional[Vaga]:
         for vaga in self.vagas_salvas:
             if vaga.id == id_vaga:
