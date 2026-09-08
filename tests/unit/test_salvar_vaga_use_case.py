@@ -5,7 +5,7 @@ from typing import Optional
 import pytest
 
 from application.use_cases.salvar_vaga import SalvarVagaUseCase
-from domain.entities.vaga import FormatoTrabalho, Vaga
+from domain.entities.vaga import FormatoTrabalho, StatusVaga, Vaga
 from domain.repositories.vaga_repository import IVagaRepository
 
 
@@ -21,6 +21,16 @@ class RepositorioVagasEmMemoria(IVagaRepository):
     def buscar_por_url(self, url: str) -> Optional[Vaga]:
         for vaga in self.vagas_salvas:
             if vaga.url == url:
+                return vaga
+        return None
+
+    def listar_todas(self) -> list[Vaga]:
+        return list(self.vagas_salvas)
+
+    def atualizar_status(self, id_vaga: int, status: StatusVaga) -> Optional[Vaga]:
+        for vaga in self.vagas_salvas:
+            if vaga.id == id_vaga:
+                vaga.status = status
                 return vaga
         return None
 

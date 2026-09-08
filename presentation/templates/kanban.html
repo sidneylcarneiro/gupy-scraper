@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gupy Scraper — Kanban de Vagas</title>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f4f6f8; color: #1f2937; padding: 1.5rem; }
+        h1 { font-size: 1.3rem; margin-bottom: .2rem; }
+        nav { margin-bottom: 1rem; font-size: .9rem; }
+        nav a { color: #2563eb; text-decoration: none; margin-right: 1rem; }
+        .sub { color: #6b7280; font-size: .9rem; margin-bottom: 1rem; }
+        .kanban { display: flex; gap: .9rem; align-items: flex-start; overflow-x: auto; padding-bottom: 1rem; }
+        .coluna { background: #e9edf1; border-radius: 10px; padding: .7rem; min-width: 230px; width: 230px; flex-shrink: 0; }
+        .coluna h2 { font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; color: #4b5563; margin-bottom: .6rem; }
+        .coluna h2 span { color: #9ca3af; }
+        .card-vaga { background: #fff; border-radius: 8px; padding: .6rem .7rem; margin-bottom: .5rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); cursor: grab; }
+        .card-vaga strong { display: block; font-size: .88rem; line-height: 1.25; }
+        .card-vaga .empresa { color: #2563eb; font-size: .8rem; font-weight: 600; }
+        .card-vaga .meta { color: #6b7280; font-size: .75rem; margin-top: .25rem; }
+        .vazia { color: #9ca3af; font-size: .8rem; font-style: italic; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">📋 Buscas</a>
+        <a href="/kanban">🗂️ Kanban</a>
+    </nav>
+    <h1>🗂️ Kanban de Vagas</h1>
+    <p class="sub">Arraste os cards entre as colunas para mover a vaga no funil — o status é salvo automaticamente no PostgreSQL. Total: {{ total_vagas }} vaga(s).</p>
+
+    <div class="kanban">
+        {% for status, vagas in vagas_por_status.items() %}
+        <div class="coluna" data-status="{{ status.value }}">
+            <h2>{{ status.value }} <span>({{ vagas|length }})</span></h2>
+            {% for vaga in vagas %}
+                {% include "partials/card_vaga.html" %}
+            {% else %}
+                <p class="vazia">Solte uma vaga aqui</p>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        document.querySelectorAll('.coluna').forEach(function (coluna) {
+            new Sortable(coluna, {
+                group: 'vagas',
+                animation: 150,
+                onEnd: function (evento) {
+                    var card = evento.item;
+                    var novoStatus = evento.to.closest('.coluna').dataset.status;
+                    htmx.ajax('PATCH', '/vagas/' + card.dataset.id + '/status', {
+                        values: { status: novoStatus },
+                        target: '#' + card.id,
+                        swap: 'outerHTML',
+                    });
+                },
+            });
+        });
+    </script>
+</body>
+</html>

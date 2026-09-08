@@ -95,3 +95,38 @@ def test_nao_deve_duplicar_vaga_com_mesma_url(repositorio, vaga_exemplo):
     vaga_no_banco = repositorio.buscar_por_url(vaga_exemplo.url)
     assert vaga_no_banco.titulo == "Titulo atualizado"
     assert vaga_no_banco.descricao == "Descricao nova"
+
+
+def test_deve_listar_todas_as_vagas(repositorio, vaga_exemplo):
+    repositorio.salvar(vaga_exemplo)
+    repositorio.salvar(
+        Vaga(
+            titulo="Outra vaga",
+            empresa="Beta",
+            localizacao="Sao Paulo",
+            formato=FormatoTrabalho.HIBRIDO,
+            descricao="desc",
+            url="https://beta.gupy.io/job/outra",
+            status=StatusVaga.ATIVA,
+        )
+    )
+
+    vagas = repositorio.listar_todas()
+
+    assert len(vagas) == 2
+    assert {vaga.empresa for vaga in vagas} == {"Gupy", "Beta"}
+
+
+def test_deve_atualizar_status_da_vaga_pelo_id(repositorio, vaga_exemplo):
+    repositorio.salvar(vaga_exemplo)
+    vaga_salva = repositorio.buscar_por_url(vaga_exemplo.url)
+
+    atualizada = repositorio.atualizar_status(vaga_salva.id, StatusVaga.CANDIDATURA_ENVIADA)
+
+    assert atualizada is not None
+    assert atualizada.status == StatusVaga.CANDIDATURA_ENVIADA
+    assert repositorio.buscar_por_url(vaga_exemplo.url).status == StatusVaga.CANDIDATURA_ENVIADA
+
+
+def test_deve_retornar_none_ao_atualizar_status_de_vaga_inexistente(repositorio):
+    assert repositorio.atualizar_status(9999, StatusVaga.REJEITADA) is None

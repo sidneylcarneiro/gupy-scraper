@@ -85,3 +85,28 @@ class PostgresVagaRepository(IVagaRepository):
             return _para_entidade(modelo)
         finally:
             session.close()
+
+    def listar_todas(self) -> list[Vaga]:
+        """Retorna todas as vagas persistidas."""
+        session: Session = self._session_factory()
+        try:
+            modelos = session.query(VagaModel).order_by(VagaModel.id).all()
+            return [_para_entidade(modelo) for modelo in modelos]
+        finally:
+            session.close()
+
+    def atualizar_status(self, id_vaga: int, status: StatusVaga) -> Optional[Vaga]:
+        """Atualiza o status da vaga pelo id; retorna None quando nao encontrada."""
+        session: Session = self._session_factory()
+        try:
+            modelo = session.get(VagaModel, id_vaga)
+            if modelo is None:
+                return None
+            modelo.status = status
+            session.commit()
+            return _para_entidade(modelo)
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()

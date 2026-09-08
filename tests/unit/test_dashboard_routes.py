@@ -2,7 +2,8 @@
 
 from fastapi.testclient import TestClient
 
-from presentation.app import app, get_busca_repository
+from domain.entities.vaga import StatusVaga
+from presentation.app import app, get_busca_repository, get_vaga_repository
 
 
 class RepositorioBuscaFake:
@@ -82,3 +83,87 @@ def test_deve_remover_busca_via_painel():
     assert resposta.status_code == 200
     assert repositorio_fake.salvas == {}
     assert "Busca removida" in resposta.text
+
+
+class RepositorioVagaFake:
+    """Repositorio de vagas em memoria para as rotas do Kanban."""
+
+    def __init__(self, vagas):
+        self.vagas = {vaga.id: vaga for vaga in vagas}
+
+    def salvar(self, vaga):
+        pass
+
+    def buscar_por_url(self, url):
+        return None
+
+    def listar_todas(self):
+        return list(self.vagas.values())
+
+    def atualizar_status(self, id_vaga, status):
+        vaga = self.vagas.get(id_vaga)
+        if vaga is None:
+            return None
+        vaga.status = status
+        return vaga
+
+
+def _vaga_fake(id_vaga, status):
+    from domain.entities.vaga import FormatoTrabalho, StatusVaga, Vaga
+
+    return Vaga(
+        titulo=f"Dev {id_vaga}",
+        empresa="Acme",
+        localizacao="Remoto",
+        formato=FormatoTrabalho.REMOTO,
+        descricao="desc",
+        url=f"https://acme.gupy.io/job/{id_vaga}",
+        id=id_vaga,
+        status=status,
+    )
+
+
+repositorio_vagas_fake = RepositorioVagaFake([])
+
+
+def obter_vaga_fake():
+    return repositorio_vagas_fake
+
+
+app.dependency_overrides[get_vaga_repository] = obter_vaga_fake
+
+
+def test_kanban_deve_exibir_colunas_e_vagas_agrupadas_por_status():
+    repositorio_vagas_fake.vagas = {
+        1: _vaga_fake(1, StatusVaga.ATIVA),
+        2: _vaga_fake(2, StatusVaga.CANDIDATURA_ENVIADA),
+    }
+
+    resposta = cliente.get("/kanban")
+
+    assert resposta.status_code == 200
+    assert "Kanban de Vagas" in resposta.text
+    for coluna in ("Ativa", "Candidatura Enviada", "Em andamento", "Rejeitada", "Contratada"):
+        assert coluna in resposta.text
+    assert "Dev 1" in resposta.text
+    assert " sortable" not in resposta.text or "Sortable" in resposta.text  # SortableJS presente
+
+
+def test_patch_status_deve_atualizar_vaga_e_retornar_card():
+    repositorio_vagas_fake.vagas = {1: _vaga_fake(1, StatusVaga.ATIVA)}
+
+    resposta = cliente.patch("/vagas/1/status", data={"status": "Contratada"})
+
+    assert resposta.status_code == 200
+    assert "Contratada" in resposta.text
+    assert repositorio_vagas_fake.vagas[1].status == StatusVaga.CONTRATADA
+
+
+def test_patch_status_deve_rejeitar_status_invalido():
+    repositorio_vagas_fake.vagas = {1: _vaga_fake(1, StatusVaga.ATIVA)}
+
+    resposta = cliente.patch("/vagas/1/status", data={"status": "Status Inexistente"})
+
+    assert resposta.status_code == 200
+    assert "Status invalido" in resposta.text
+    assert repositorio_vagas_fake.vagas[1].status == StatusVaga.ATIVA  # inalterado
