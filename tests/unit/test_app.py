@@ -3,7 +3,7 @@
 from fastapi.testclient import TestClient
 
 from domain.entities.vaga import StatusVaga
-from presentation.app import app, get_busca_repository, get_vaga_repository
+from presentation.app import app, get_busca_repository, get_orquestrador, get_vaga_repository
 
 
 class RepositorioBuscaFake:
@@ -40,13 +40,15 @@ app.dependency_overrides[get_busca_repository] = obter_fake
 cliente = TestClient(app)
 
 
-def test_dashboard_deve_exibir_formulario_e_lista_vazia():
+def test_dashboard_deve_exibir_dropdown_vazio_quando_nao_ha_buscas():
     repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
     resposta = cliente.get("/")
 
     assert resposta.status_code == 200
-    assert "Nova busca" in resposta.text
+    assert "Busca de Vagas" in resposta.text
     assert "Nenhuma busca cadastrada" in resposta.text
+    assert "Nova busca" not in resposta.text  # formulário migrou para Configurações
 
 
 def test_deve_cadastrar_busca_via_painel():
@@ -172,22 +174,104 @@ def test_patch_status_deve_rejeitar_status_invalido():
     assert repositorio_vagas_fake.vagas[1].status == StatusVaga.ATIVA  # inalterado
 
 
-def test_inbox_deve_exibir_apenas_vagas_com_status_nova():
-    repositorio_vagas_fake.vagas = {
-        1: _vaga_fake(1, StatusVaga.NOVA),
-        2: _vaga_fake(2, StatusVaga.ATIVA),
-        3: _vaga_fake(3, StatusVaga.DESCARTADA),
-    }
+def test_pagina_busca_deve_exibir_dropdown_das_buscas_salvas():
+    repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
+    repositorio_fake.salvar(
+        type("BuscaFake", (), {"apelido": "Python Remoto", "url": "https://portal.gupy.io/job-search/term=python", "id": 1})()
+    )
 
-    resposta = cliente.get("/inbox")
+    resposta = cliente.get("/")
 
     assert resposta.status_code == 200
-    assert "Inbox" in resposta.text
-    assert "Dev 1" in resposta.text
-    assert "Dev 2" not in resposta.text
-    assert "Dev 3" not in resposta.text
+    assert "Busca de Vagas" in resposta.text
+    assert '<option value="1">Python Remoto</option>' in resposta.text
+    assert "🔎 Buscar" in resposta.text
+    assert 'hx-post="/buscar"' in resposta.text
+
+
+def test_menu_nao_deve_mais_conter_o_inbox():
+    resposta = cliente.get("/")
+
+    assert "/inbox" not in resposta.text
+    assert "🔍 Busca" in resposta.text
+    assert "🗂️ Kanban" in resposta.text
+    assert "⚙️ Configurações" in resposta.text
+
+
+def test_configuracoes_deve_exibir_formulario_e_buscas_salvas():
+    repositorio_fake.salvas.clear()
+    repositorio_fake.salvar(
+        type("BuscaFake", (), {"apelido": "Dados SP", "url": "https://portal.gupy.io/job-search/term=dados", "id": 2})()
+    )
+
+    resposta = cliente.get("/configuracoes")
+
+    assert resposta.status_code == 200
+    assert "Nova busca" in resposta.text
+    assert 'hx-post="/buscas"' in resposta.text
+    assert "Dados SP" in resposta.text
+
+
+class OrquestradorFake:
+    """Orquestrador falso: salva uma vaga NOVA no repositorio e retorna."""
+
+    def __init__(self, repositorio_vagas):
+        self._repositorio_vagas = repositorio_vagas
+        self.urls_executadas = []
+
+    def executar(self, url_busca):
+        self.urls_executadas.append(url_busca)
+        from domain.entities.vaga import FormatoTrabalho, Vaga
+
+        vaga = Vaga(
+            titulo="Vaga nova do scraper",
+            empresa="Acme",
+            localizacao="Remoto",
+            formato=FormatoTrabalho.REMOTO,
+            descricao="desc",
+            url=f"https://acme.gupy.io/job/nova-{len(self.urls_executadas)}",
+            status=StatusVaga.NOVA,
+        )
+        vaga.id = len(self._repositorio_vagas.vagas) + 1
+        self._repositorio_vagas.vagas[vaga.id] = vaga  # o salvar do fake e no-op
+        return [vaga]
+
+
+def test_buscar_deve_executar_busca_e_exibir_vagas_nova_com_acoes():
+    repositorio_fake.salvas.clear()
+    repositorio_fake._proximo_id = 1
+    repositorio_fake.salvar(
+        type("BuscaFake", (), {"apelido": "Python Remoto", "url": "https://portal.gupy.io/job-search/term=python", "id": 1})()
+    )
+    repositorio_vagas_fake.vagas = {}
+
+    class OrquestradorDeTeste(OrquestradorFake):
+        def __init__(self):
+            super().__init__(repositorio_vagas_fake)
+
+    app.dependency_overrides[get_orquestrador] = OrquestradorDeTeste
+    try:
+        resposta = cliente.post("/buscar", data={"id_busca": "1"})
+    finally:
+        del app.dependency_overrides[get_orquestrador]
+
+    assert resposta.status_code == 200
+    assert "Vaga nova do scraper" in resposta.text
+    assert "Visualizar" in resposta.text
     assert "Adicionar ao Kanban" in resposta.text
-    assert "Descartar" in resposta.text
+    assert 'hx-vals=\'{"status": "Ativa"}\'' in resposta.text
+
+
+def test_buscar_com_busca_inexistente_deve_retornar_erro():
+    app.dependency_overrides[get_orquestrador] = lambda: OrquestradorFake(repositorio_vagas_fake)
+    try:
+        resposta = cliente.post("/buscar", data={"id_busca": "999"})
+    finally:
+        del app.dependency_overrides[get_orquestrador]
+
+    assert resposta.status_code == 200
+    assert "Erro: busca nao encontrada" in resposta.text
 
 
 def test_kanban_nao_deve_exibir_vagas_nova_nem_descartada():

@@ -5,7 +5,7 @@ pagina de detalhes). Nao invente seletores novos sem antes validar o HTML.
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from playwright.sync_api import Locator, Page, sync_playwright
@@ -94,11 +94,34 @@ class GupyScraper:
         self._navegar(page, url_busca)
         page.wait_for_selector(self.SELETOR_LISTA_VAGAS, timeout=self.TIMEOUT_SELETOR_MS)
 
+    DIAS_LIMITE_VAGA = 30
+
     def extrair_vagas(self, url_busca: str) -> list[Vaga]:
-        """Extrai as vagas da listagem da URL de busca informada."""
+        """Extrai as vagas da listagem da URL de busca informada.
+
+        Regra de negocio: vagas publicadas ha mais de 30 dias sao ignoradas.
+        Vagas sem data de publicacao detectavel sao mantidas.
+        """
         self.acessar_pagina(url_busca)
         cards = self._page.locator(self.SELETOR_CARD_VAGA).all()
-        return [self._extrair_vaga_do_card(card) for card in cards]
+
+        vagas_extraidas = []
+        for card in cards:
+            vaga = self._extrair_vaga_do_card(card)
+            if self._dentro_do_prazo(vaga.data_publicacao):
+                vagas_extraidas.append(vaga)
+        return vagas_extraidas
+
+    @classmethod
+    def _dentro_do_prazo(cls, data_publicacao: Optional[datetime], agora: Optional[datetime] = None) -> bool:
+        """Indica se a vaga respeita o limite de DIAS_LIMITE_VAGA dias.
+
+        Vagas sem data detectada (None) sao sempre mantidas.
+        """
+        if data_publicacao is None:
+            return True
+        limite = (agora or datetime.now()) - timedelta(days=cls.DIAS_LIMITE_VAGA)
+        return data_publicacao >= limite
 
     def extrair_detalhes_vaga(self, url: str) -> str:
         """Extrai a descricao completa da pagina individual da vaga.

@@ -1,0 +1,24 @@
+{% if mensagem %}
+    <div class="mensagem {% if mensagem.startswith('Erro') %}erro{% endif %}">{{ mensagem }}</div>
+{% endif %}
+
+{% if vagas_novas %}
+    {% for vaga in vagas_novas %}
+    <div class="card-vaga" id="resultado-vaga-{{ vaga.id }}" data-id="{{ vaga.id }}">
+        <span class="empresa">{{ vaga.empresa }}</span><br>
+        <strong>{{ vaga.titulo }}</strong>
+        <div class="meta">{{ vaga.localizacao }} · {{ vaga.formato.value }} · Publicada: {{ vaga.data_publicacao.strftime('%d/%m/%Y') if vaga.data_publicacao else 'n/d' }}</div>
+        <div class="acoes">
+            <a href="/vagas/{{ vaga.id }}">👁 Visualizar</a>
+            <button class="verde"
+                    hx-patch="/vagas/{{ vaga.id }}/status"
+                    hx-vals='{"status": "Ativa"}'
+                    hx-target="#resultado-vaga-{{ vaga.id }}"
+                    hx-swap="delete"
+                    title="Move a vaga para a coluna Ativa do Kanban">➕ Adicionar ao Kanban</button>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <p class="vazia">Nenhuma vaga nova. Execute uma busca acima ou faça a triagem das pendentes.</p>
+{% endif %}

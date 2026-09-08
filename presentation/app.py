@@ -59,17 +59,70 @@ def _renderizar_lista(request: Request, repositorio: IBuscaRepository, mensagem:
     )
 
 
+def get_orquestrador() -> OrquestradorScraper:
+    """Fornece o orquestrador real (sobrescrito nos testes com fakes)."""
+    return OrquestradorScraper(
+        scraper=GupyScraper(),
+        salvar_vaga_use_case=SalvarVagaUseCase(PostgresVagaRepository(SessionLocal)),
+    )
+
+
 CABECALHOS_SEM_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate"}
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, repositorio: IBuscaRepository = Depends(get_busca_repository)):
-    """Painel principal: formulario de cadastro + lista de buscas salvas."""
+def dashboard(
+    request: Request,
+    repositorio: IBuscaRepository = Depends(get_busca_repository),
+    repositorio_vagas: IVagaRepository = Depends(get_vaga_repository),
+):
+    """Motor de operacao: dropdown de buscas salvas + resultados da extracao."""
+    vagas_novas = [
+        vaga for vaga in ListarVagasUseCase(repositorio_vagas).executar()
+        if vaga.status == StatusVaga.NOVA
+    ]
     return templates.TemplateResponse(
         request,
         "index.html",
-        {"buscas": repositorio.listar(), "mensagem": ""},
+        {"buscas": repositorio.listar(), "vagas_novas": vagas_novas},
         headers=CABECALHOS_SEM_CACHE,
+    )
+
+
+@app.post("/buscar", response_class=HTMLResponse)
+def buscar(
+    request: Request,
+    id_busca: int = Form(...),
+    repositorio: IBuscaRepository = Depends(get_busca_repository),
+    repositorio_vagas: IVagaRepository = Depends(get_vaga_repository),
+    orquestrador: OrquestradorScraper = Depends(get_orquestrador),
+):
+    """Executa a busca selecionada e retorna o fragmento com as vagas NOVA."""
+    busca = repositorio.buscar_por_id(id_busca)
+    if busca is None:
+        return templates.TemplateResponse(
+            request,
+            "partials/resultados_busca.html",
+            {"vagas_novas": [], "mensagem": "Erro: busca nao encontrada."},
+        )
+
+    try:
+        orquestrador.executar(busca.url)
+    except Exception as erro:
+        return templates.TemplateResponse(
+            request,
+            "partials/resultados_busca.html",
+            {"vagas_novas": [], "mensagem": f"Erro ao executar a busca: {erro}"},
+        )
+
+    vagas_novas = [
+        vaga for vaga in ListarVagasUseCase(repositorio_vagas).executar()
+        if vaga.status == StatusVaga.NOVA
+    ]
+    return templates.TemplateResponse(
+        request,
+        "partials/resultados_busca.html",
+        {"vagas_novas": vagas_novas, "mensagem": ""},
     )
 
 
@@ -149,19 +202,6 @@ def kanban(request: Request, repositorio_vagas: IVagaRepository = Depends(get_va
     )
 
 
-@app.get("/inbox", response_class=HTMLResponse)
-def inbox(request: Request, repositorio_vagas: IVagaRepository = Depends(get_vaga_repository)):
-    """Caixa de entrada: vagas recem-extraidas (NOVA) aguardando triagem."""
-    vagas = ListarVagasUseCase(repositorio_vagas).executar()
-    novas = [vaga for vaga in vagas if vaga.status == StatusVaga.NOVA]
-    return templates.TemplateResponse(
-        request,
-        "inbox.html",
-        {"vagas_novas": novas},
-        headers=CABECALHOS_SEM_CACHE,
-    )
-
-
 @app.get("/vagas/{id_vaga}", response_class=HTMLResponse)
 def detalhes_vaga(
     request: Request,
@@ -182,9 +222,14 @@ def detalhes_vaga(
 
 
 @app.get("/configuracoes", response_class=HTMLResponse)
-def configuracoes(request: Request):
-    """Pagina de configuracoes (placeholder — sera implementada em breve)."""
-    return templates.TemplateResponse(request, "configuracoes.html", {})
+def configuracoes(request: Request, repositorio: IBuscaRepository = Depends(get_busca_repository)):
+    """Unico lugar onde se cria ou remove um link de busca (apelido + URL)."""
+    return templates.TemplateResponse(
+        request,
+        "configuracoes.html",
+        {"buscas": repositorio.listar(), "mensagem": ""},
+        headers=CABECALHOS_SEM_CACHE,
+    )
 
 
 @app.patch("/vagas/{id_vaga}/status", response_class=HTMLResponse)
