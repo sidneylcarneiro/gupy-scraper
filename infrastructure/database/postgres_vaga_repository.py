@@ -40,14 +40,18 @@ def _para_entidade(modelo: VagaModel) -> Vaga:
 
 
 def _atualizar_modelo(modelo: VagaModel, vaga: Vaga) -> None:
-    """Copia os campos da entidade para o modelo ja persistido (preserva id/url)."""
+    """Copia os campos da entidade para o modelo ja persistido (preserva id/url).
+
+    IMPORTANTE: o campo `status` NAO e atualizado aqui — ele pertence ao
+    usuario (definido no Kanban). O re-scraping nao deve sobrescrever o
+    progresso do funil de candidaturas; status so e definido no INSERT.
+    """
     modelo.titulo = vaga.titulo
     modelo.empresa = vaga.empresa
     modelo.localizacao = vaga.localizacao
     modelo.formato = vaga.formato
     modelo.descricao = vaga.descricao
     modelo.data_publicacao = vaga.data_publicacao
-    modelo.status = vaga.status
 
 
 class PostgresVagaRepository(IVagaRepository):

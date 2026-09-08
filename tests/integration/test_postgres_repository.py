@@ -130,3 +130,25 @@ def test_deve_atualizar_status_da_vaga_pelo_id(repositorio, vaga_exemplo):
 
 def test_deve_retornar_none_ao_atualizar_status_de_vaga_inexistente(repositorio):
     assert repositorio.atualizar_status(9999, StatusVaga.REJEITADA) is None
+
+
+def test_salvar_nao_deve_sobrescrever_status_de_vaga_existente(repositorio, vaga_exemplo):
+    """O status definido pelo usuario no Kanban deve sobreviver ao re-scraping."""
+    repositorio.salvar(vaga_exemplo)
+    vaga_salva = repositorio.buscar_por_url(vaga_exemplo.url)
+    repositorio.atualizar_status(vaga_salva.id, StatusVaga.CANDIDATURA_ENVIADA)
+
+    vaga_do_scraper = Vaga(
+        titulo="Titulo atualizado pelo scraper",
+        empresa=vaga_exemplo.empresa,
+        localizacao=vaga_exemplo.localizacao,
+        formato=vaga_exemplo.formato,
+        descricao="Descricao nova do scraper",
+        url=vaga_exemplo.url,  # mesma URL: dispara o upsert
+        status=StatusVaga.ATIVA,  # scraper sempre traz ATIVA
+    )
+    repositorio.salvar(vaga_do_scraper)
+
+    vaga_no_banco = repositorio.buscar_por_url(vaga_exemplo.url)
+    assert vaga_no_banco.status == StatusVaga.CANDIDATURA_ENVIADA  # preservado!
+    assert vaga_no_banco.titulo == "Titulo atualizado pelo scraper"  # demais campos atualizados

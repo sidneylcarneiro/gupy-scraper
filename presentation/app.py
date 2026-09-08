@@ -55,6 +55,9 @@ def _renderizar_lista(request: Request, repositorio: IBuscaRepository, mensagem:
     )
 
 
+CABECALHOS_SEM_CACHE = {"Cache-Control": "no-cache, no-store, must-revalidate"}
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request, repositorio: IBuscaRepository = Depends(get_busca_repository)):
     """Painel principal: formulario de cadastro + lista de buscas salvas."""
@@ -62,6 +65,7 @@ def dashboard(request: Request, repositorio: IBuscaRepository = Depends(get_busc
         request,
         "index.html",
         {"buscas": repositorio.listar(), "mensagem": ""},
+        headers=CABECALHOS_SEM_CACHE,
     )
 
 
@@ -130,6 +134,7 @@ def kanban(request: Request, repositorio_vagas: IVagaRepository = Depends(get_va
         request,
         "kanban.html",
         {"vagas_por_status": vagas_por_status, "total_vagas": len(vagas)},
+        headers=CABECALHOS_SEM_CACHE,
     )
 
 
